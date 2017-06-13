@@ -1,10 +1,6 @@
 package main
 
-import (
-	"fmt"
-
-	_ "dice/cdn"
-)
+import "fmt"
 
 func main() {
 	fmt.Println("Dice")
