@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"math/rand"
 	"regexp"
 	"strconv"
@@ -9,11 +8,12 @@ import (
 
 // Dice structure of the dice set
 type Dice struct {
-	DieType    string
-	DieModFunc string
 	DieCount   int
-	DieSides   string
+	DieType    string
+	DieSides   int
+	DieModFunc string
 	DieModVal  int
+	seed       int64
 }
 
 // Pattern determine pattern from dice notation string
@@ -25,9 +25,9 @@ func (d *Dice) Pattern(die string) {
 	sPattern := regexp.MustCompile(`^(\d+)?d(\d+)([x/+-](\d+))?`)
 	fudge := regexp.MustCompile(`^(\d+)F`)
 
-	fmt.Printf("\n%s\t", die)
+	// fmt.Printf("\n%s\t", die)
 	if sPattern.MatchString(die) == true {
-		fmt.Printf("sPattern\t")
+		// fmt.Printf("sPattern\t")
 		d.DieType = "d"
 		dc := dCount.FindSubmatch([]byte(die))
 		sc := sCount.FindSubmatch([]byte(die))
@@ -48,37 +48,28 @@ func (d *Dice) Pattern(die string) {
 		} else {
 			d.DieModVal, _ = strconv.Atoi(string(mdv[1]))
 		}
-		d.DieSides = string(sc[1])
+		d.DieSides, _ = strconv.Atoi(string(sc[1]))
 	}
 	if fudge.MatchString(die) == true {
 		d.DieType = "F"
 		dc := fudge.FindSubmatch([]byte(die))
 		d.DieCount, _ = strconv.Atoi(string(dc[1]))
+		d.DieSides = 3
+		d.DieModFunc = ""
+		d.DieModVal = 0
 	}
 }
 
 //Roll soll the die given
 func (d *Dice) Roll(sides int) int {
-	// rand.Seed(0)
+	rand.Seed(600)
+	return rand.Intn(sides)
+}
+
+func roll1(sides int) int {
+	rand.Seed(600)
 	return rand.Intn(sides)
 }
 
 func main() {
-	fmt.Println("Dice")
-	// fmt.Println(cdn("1d6"))
-	// fmt.Println(cdn("1d6"))
-}
-
-//Mul multiply
-func Mul(a int, b int) int {
-	return a * b
-}
-
-//FibFunc fibonacci series
-func FibFunc() func() uint64 {
-	var a, b uint64 = 0, 1 // yes, it's wrong
-	return func() uint64 {
-		a, b = b, a+b
-		return a
-	}
 }
