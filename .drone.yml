@@ -3,5 +3,4 @@ pipeline:
         image: golang
         commands:
             - go build
-            - go test
-            - go test -cover
+            - go test -cover -race
