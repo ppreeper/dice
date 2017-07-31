@@ -1,85 +1,39 @@
 package main
 
-import (
-	"testing"
-)
+import "testing"
 
-var mulRoll = []struct {
-	a        int
-	expected int
-}{
-	{1, 0},
-	{2, 1},
-	{3, 2},
-	{4, 3},
-	{5, 1},
-	{6, 5},
-	{7, 0},
-	{8, 3},
-	{9, 5},
-	{10, 1},
-	{11, 6},
-	{12, 11},
-	{13, 10},
-	{14, 7},
-	{15, 11},
-	{16, 3},
-	{17, 15},
-	{18, 5},
-	{19, 14},
-	{20, 11},
-}
-
-func TestRoll1(t *testing.T) {
-	for _, mt := range mulRoll {
-		if v := roll1(mt.a); v != mt.expected {
-			t.Errorf("roll1(%d) returned %d, expected %d", mt.a, v, mt.expected)
-		}
-	}
-}
-
-// use values that you know are right
+// mulPatternTests use values that you know are right
 var mulPatternTests = []struct {
-	a          string
-	dieCount   int
-	dieType    string
-	dieSides   int
-	dieModFunc string
-	dieModVal  int
-	expected   int
+	a            string
+	dieCount     int
+	dieType      string
+	dieSides     int
+	dieModFunc   string
+	dieModVal    int
+	expectedRoll int
+	expected     []int
+	expectedSum  int
 }{
-	{"1d6", 1, "d", 6, "", 0, 5},
-	{"2d6", 2, "d", 6, "", 0, 5},
-	{"10d8", 10, "d", 8, "", 0, 3},
-	{"4F", 4, "F", 3, "", 0, 2},
-	{"d6", 1, "d", 6, "", 0, 5},
-	{"d20", 1, "d", 20, "", 0, 11},
-	{"d6+2", 1, "d", 6, "+", 2, 5},
-	{"d20+5", 1, "d", 20, "+", 5, 11},
-	{"3d20x5", 3, "d", 20, "x", 5, 11},
-	{"3d20/5", 3, "d", 20, "/", 5, 11},
-	{"3d20+5", 3, "d", 20, "+", 5, 11},
-	{"3d20-5", 3, "d", 20, "-", 5, 11},
+	{"1d6", 1, "d", 6, "", 0, 4, []int{6}, 6},
+	{"2d6", 2, "d", 6, "", 0, 6, []int{6, 4}, 10},
+	{"10d8", 10, "d", 8, "", 0, 7, []int{2, 8, 8, 4, 2, 7, 2, 5, 1, 5}, 44},
+	{"4F", 4, "F", 3, "", 0, 3, []int{3, 1, 3, 3}, 2},
+	{"d6", 1, "d", 6, "", 0, 1, []int{6}, 6},
+	{"d20", 1, "d", 20, "", 0, 12, []int{2}, 2},
+	{"d6+2", 1, "d", 6, "+", 2, 6, []int{6}, 8},
+	{"d20+5", 1, "d", 20, "+", 5, 15, []int{2}, 7},
+	{"3d20x5", 3, "d", 20, "x", 5, 6, []int{2, 8, 8}, 90},
+	{"3d20/5", 3, "d", 20, "/", 5, 7, []int{2, 8, 8}, 13},
+	{"3d20+5", 3, "d", 20, "+", 5, 7, []int{2, 8, 8}, 23},
+	{"3d20-5", 3, "d", 20, "-", 5, 19, []int{2, 8, 8}, 13},
 }
 
-// type Dice struct {
-// 	DieCount   int
-// 	DieType    string
-// 	DieSides   int
-// 	DieModFunc string
-// 	DieModVal  int
-// }
-
+// TestPattern test
 func TestPattern(t *testing.T) {
-	var d Dice
 	for _, mt := range mulPatternTests {
-		// fmt.Printf("%s", mt.a)
+		var d Dice
+		d.seed = 600
 		d.Pattern(mt.a)
-		// fmt.Printf("\tDieType: %s", d.DieType)
-		// fmt.Printf("\tDieCount: %d", d.DieCount)
-		// fmt.Printf("\tDieSides: %d", d.DieSides)
-		// fmt.Printf("\tDieModFunc: %s", d.DieModFunc)
-		// fmt.Printf("\tDieModVal: %d\n", d.DieModVal)
 		if d.DieType != mt.dieType {
 			t.Errorf("\nDieType expected %s, got %s", mt.dieType, d.DieType)
 		}
@@ -98,15 +52,37 @@ func TestPattern(t *testing.T) {
 	}
 }
 
-func TestRoll(t *testing.T) {
-	var d Dice
+// TestRollDie test
+func TestRollDie(t *testing.T) {
 	for _, mt := range mulPatternTests {
+		var d Dice
+		d.seed = 600
 		d.Pattern(mt.a)
-		if v := d.Roll(d.DieSides); v != mt.expected {
-			t.Errorf("\nDie.Roll(%d) expected %d, got %d",
-				d.DieSides,
-				mt.expected,
-				d.DieModVal)
+		d.RollDie()
+		if v := d.RollDie(); mt.expectedRoll != v {
+			t.Errorf("\nCount %d, Sides %d, Expected %v, got %v",
+				d.DieCount, d.DieSides, mt.expectedRoll, v)
+		}
+	}
+}
+
+// TestRoll test
+func TestRoll(t *testing.T) {
+	for _, mt := range mulPatternTests {
+		var d Dice
+		d.seed = 1
+		d.Pattern(mt.a)
+		d.Roll()
+		// fmt.Printf("%v %v\n", d.Results, mt.expected)
+		if len(d.Results) == len(mt.expected) {
+			for i := 0; i < len(d.Results); i++ {
+				if d.Results[i] != mt.expected[i] {
+					t.Errorf("results not equal\n")
+				}
+			}
+		}
+		if d.Sum != mt.expectedSum {
+			t.Errorf("sum not equal\n")
 		}
 	}
 }
