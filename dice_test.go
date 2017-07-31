@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"math/rand"
+	"testing"
+)
 
 // mulPatternTests use values that you know are right
 var mulPatternTests = []struct {
@@ -14,25 +17,25 @@ var mulPatternTests = []struct {
 	expected     []int
 	expectedSum  int
 }{
-	{"1d6", 1, "d", 6, "", 0, 4, []int{6}, 6},
-	{"2d6", 2, "d", 6, "", 0, 6, []int{6, 4}, 10},
-	{"10d8", 10, "d", 8, "", 0, 7, []int{2, 8, 8, 4, 2, 7, 2, 5, 1, 5}, 44},
-	{"4F", 4, "F", 3, "", 0, 3, []int{3, 1, 3, 3}, 2},
-	{"d6", 1, "d", 6, "", 0, 1, []int{6}, 6},
-	{"d20", 1, "d", 20, "", 0, 12, []int{2}, 2},
-	{"d6+2", 1, "d", 6, "+", 2, 6, []int{6}, 8},
-	{"d20+5", 1, "d", 20, "+", 5, 15, []int{2}, 7},
-	{"3d20x5", 3, "d", 20, "x", 5, 6, []int{2, 8, 8}, 90},
-	{"3d20/5", 3, "d", 20, "/", 5, 7, []int{2, 8, 8}, 13},
-	{"3d20+5", 3, "d", 20, "+", 5, 7, []int{2, 8, 8}, 23},
-	{"3d20-5", 3, "d", 20, "-", 5, 19, []int{2, 8, 8}, 13},
+	{"1d6", 1, "d", 6, "", 0, 6, []int{5}, 5},
+	{"2d6", 2, "d", 6, "", 0, 6, []int{3, 3}, 6},
+	{"10d8", 10, "d", 8, "", 0, 6, []int{2, 5, 4, 5, 7, 8, 1, 6, 5, 2}, 45},
+	{"4F", 4, "F", 3, "", 0, 2, []int{0, 1, -1, -1}, -1},
+	{"d6", 1, "d", 6, "", 0, 3, []int{2}, 2},
+	{"d20", 1, "d", 20, "", 0, 16, []int{11}, 11},
+	{"d6+2", 1, "d", 6, "+", 2, 5, []int{3}, 5},
+	{"d20+5", 1, "d", 20, "+", 5, 15, []int{9}, 14},
+	{"3d20x5", 3, "d", 20, "x", 5, 12, []int{8, 9, 20}, 185},
+	{"3d20/5", 3, "d", 20, "/", 5, 1, []int{4, 5, 11}, 4},
+	{"3d20+5", 3, "d", 20, "+", 5, 16, []int{15, 18, 17}, 55},
+	{"3d20-5", 3, "d", 20, "-", 5, 3, []int{3, 2, 8}, 8},
 }
 
 // TestPattern test
 func TestPattern(t *testing.T) {
 	for _, mt := range mulPatternTests {
 		var d Dice
-		d.seed = 600
+		d.seed = true
 		d.Pattern(mt.a)
 		if d.DieType != mt.dieType {
 			t.Errorf("\nDieType expected %s, got %s", mt.dieType, d.DieType)
@@ -56,10 +59,12 @@ func TestPattern(t *testing.T) {
 func TestRollDie(t *testing.T) {
 	for _, mt := range mulPatternTests {
 		var d Dice
-		d.seed = 600
+		d.seed = true
+		var r *rand.Rand
+		r = rand.New(randFixed)
 		d.Pattern(mt.a)
-		d.RollDie()
-		if v := d.RollDie(); mt.expectedRoll != v {
+		// v := d.RollDie(r)
+		if v := d.RollDie(r); mt.expectedRoll != v {
 			t.Errorf("\nCount %d, Sides %d, Expected %v, got %v",
 				d.DieCount, d.DieSides, mt.expectedRoll, v)
 		}
@@ -70,19 +75,24 @@ func TestRollDie(t *testing.T) {
 func TestRoll(t *testing.T) {
 	for _, mt := range mulPatternTests {
 		var d Dice
-		d.seed = 1
+		d.seed = true
 		d.Pattern(mt.a)
 		d.Roll()
 		// fmt.Printf("%v %v\n", d.Results, mt.expected)
+		// fmt.Printf("result lengths %d  %d\t", len(d.Results), len(mt.expected))
+		// fmt.Printf("sum %d  %d\n", d.total, mt.expectedSum)
 		if len(d.Results) == len(mt.expected) {
-			for i := 0; i < len(d.Results); i++ {
-				if d.Results[i] != mt.expected[i] {
-					t.Errorf("results not equal\n")
-				}
+			if d.total != mt.expectedSum {
+				t.Errorf("results %v\t%v\tsum not equal %d  %d\n", d.Results, mt.expected, d.total, mt.expectedSum)
 			}
 		}
-		if d.Sum != mt.expectedSum {
-			t.Errorf("sum not equal\n")
-		}
 	}
+}
+
+// TestMain testing
+func TestMain(t *testing.T) {
+	*cdn = "1d6"
+	main()
+	*cdn = ""
+	main()
 }

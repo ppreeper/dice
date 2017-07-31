@@ -11,6 +11,9 @@ import (
 
 var cdn = flag.String("D", "", "Die Notation")
 
+var randSource = rand.NewSource(time.Now().UnixNano())
+var randFixed = rand.NewSource(600)
+
 // Dice structure of the dice set
 type Dice struct {
 	DieCount   int
@@ -19,8 +22,8 @@ type Dice struct {
 	DieModFunc string
 	DieModVal  int
 	Results    []int
-	Sum        int
-	seed       int64
+	total      int
+	seed       bool
 }
 
 // Pattern determine pattern from dice notation string
@@ -68,65 +71,90 @@ func (d *Dice) Pattern(die string) {
 }
 
 // RollDie soll the die given
-func (d *Dice) RollDie() int {
-	rand.New(rand.NewSource(d.seed))
-	rollVal := rand.Intn(d.DieSides) + 1
-	// fmt.Printf("%v %v %v\n", d.DieCount, d.DieSides, rollVal)
+func (d *Dice) RollDie(r *rand.Rand) int {
+	var rollVal int
+	rollVal = r.Intn(d.DieSides) + 1
 	return rollVal
+}
+
+// Sum channel
+func (d *Dice) Sum(s []int, c chan int) {
+	sum := 0
+	// fmt.Printf("%v\n", s)
+	for _, v := range s {
+		// fmt.Printf("%d %d\n", k, v)
+		sum += v
+	}
+	// fmt.Printf("in chan %d\n", sum)
+	c <- sum
 }
 
 // Roll soll the die given
 func (d *Dice) Roll() {
-	rand.Seed(d.seed)
+	c := make(chan int)
 	// fmt.Printf("DieCount = %d, DieSides = %d\n", d.DieCount, d.DieSides)
+	var r *rand.Rand
+	if d.seed {
+		r = rand.New(randFixed)
+	} else {
+		r = rand.New(randSource)
+	}
 	for i := 0; i < d.DieCount; i++ {
-		r := d.RollDie()
-		d.Results = append(d.Results, r)
+		// d.RollDie(r)
+		res := d.RollDie(r)
+		d.Results = append(d.Results, res)
 		// fmt.Printf("DieSides = %d, result=%d\n", d.DieSides, r)
 	}
 	// fmt.Println(d.Results)
 	if d.DieType == "F" {
-		d.Sum = 0
 		for i := 0; i < len(d.Results); i++ {
 			switch d.Results[i] {
 			case 1:
-				d.Sum = d.Sum - 1
+				d.Results[i] = -1
+			case 2:
+				d.Results[i] = 0
 			case 3:
-				d.Sum = d.Sum + 1
+				d.Results[i] = 1
 			}
 		}
-	} else {
-		for i := 0; i < len(d.Results); i++ {
-			d.Sum += d.Results[i]
-		}
 	}
-	// fmt.Println(d.Sum)
+
+	// if d.seed == false {
+	// 	randDie.NewSource(time.Now().UnixNano())
+	go d.Sum(d.Results, c)
+	d.total = <-c
+	// } else {
+	// 	go d.Sum(d.Results, c)
+	// 	d.total = <-c
+	// }
+
+	// fmt.Println(d.total)
 	switch d.DieModFunc {
 	case "+":
 		// fmt.Printf("%v %d add %d = %d\n", d.Results, d.Sum, d.DieModVal, d.Sum+d.DieModVal)
-		d.Sum = d.Sum + d.DieModVal
+		d.total = d.total + d.DieModVal
 	case "-":
 		// fmt.Printf("%v %d minus %d = %d\n", d.Results, d.Sum, d.DieModVal, d.Sum-d.DieModVal)
-		d.Sum = d.Sum - d.DieModVal
+		d.total = d.total - d.DieModVal
 	case "x":
 		// fmt.Printf("%v %d times %d = %d\n", d.Results, d.Sum, d.DieModVal, d.Sum*d.DieModVal)
-		d.Sum = d.Sum * d.DieModVal
+		d.total = d.total * d.DieModVal
 	case "/":
 		// fmt.Printf("%v %d divide %d = %d\n", d.Results, d.Sum, d.DieModVal, d.Sum/d.DieModVal)
-		d.Sum = d.Sum - d.DieModVal
+		d.total = d.total / d.DieModVal
 	}
 }
 
 func main() {
 	flag.Parse()
 	var d Dice
-	d.seed = time.Now().UnixNano()
+	d.seed = false
 	if *cdn == "" {
 		fmt.Println("No Die Notation")
 	} else {
 		d.Pattern(*cdn)
 		d.Roll()
-		fmt.Printf("%v %v\n", d.Results, d.Sum)
+		fmt.Printf("%v %v\n", d.Results, d.total)
 	}
 	return
 }
