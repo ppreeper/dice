@@ -76,8 +76,7 @@ func TestRoll(t *testing.T) {
 	for _, mt := range mulPatternTests {
 		var d Dice
 		d.seed = true
-		d.Pattern(mt.a)
-		d.Roll()
+		d.Roll(mt.a)
 		// fmt.Printf("%v %v\n", d.Results, mt.expected)
 		// fmt.Printf("result lengths %d  %d\t", len(d.Results), len(mt.expected))
 		// fmt.Printf("sum %d  %d\n", d.total, mt.expectedSum)

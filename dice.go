@@ -90,7 +90,8 @@ func (d *Dice) Sum(s []int, c chan int) {
 }
 
 // Roll soll the die given
-func (d *Dice) Roll() {
+func (d *Dice) Roll(die string) {
+	d.Pattern(die)
 	c := make(chan int)
 	// fmt.Printf("DieCount = %d, DieSides = %d\n", d.DieCount, d.DieSides)
 	var r *rand.Rand
@@ -152,8 +153,7 @@ func main() {
 	if *cdn == "" {
 		fmt.Println("No Die Notation")
 	} else {
-		d.Pattern(*cdn)
-		d.Roll()
+		d.Roll(*cdn)
 		fmt.Printf("%v %v\n", d.Results, d.total)
 	}
 	return
