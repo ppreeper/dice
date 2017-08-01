@@ -55,6 +55,32 @@ func TestPattern(t *testing.T) {
 	}
 }
 
+// BenchmarkPattern
+func BenchmarkPatternd6(b *testing.B) {
+	// run the Fib function b.N times
+	var d Dice
+	for n := 0; n < b.N; n++ {
+		d.Pattern("d6")
+	}
+}
+
+// BenchmarkPattern
+func BenchmarkPattern1d6(b *testing.B) {
+	// run the Fib function b.N times
+	var d Dice
+	for n := 0; n < b.N; n++ {
+		d.Pattern("1d6")
+	}
+}
+
+func BenchmarkPattern6F(b *testing.B) {
+	// run the Fib function b.N times
+	var d Dice
+	for n := 0; n < b.N; n++ {
+		d.Pattern("6F")
+	}
+}
+
 // TestRollDie test
 func TestRollDie(t *testing.T) {
 	for _, mt := range mulPatternTests {
