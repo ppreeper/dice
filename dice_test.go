@@ -5,6 +5,7 @@ import (
 	"io"
 	"math/rand"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -181,16 +182,23 @@ func TestRoll(t *testing.T) {
 // TestMain testing
 func TestMain(t *testing.T) {
 	*cdn = "1d6"
-	main()
+	var message string
+	message = captureStdout(main)
+	if !strings.HasPrefix(message, "[") {
+		t.Errorf("Fail: main() 1d6 fail\n")
+	}
 	*cdn = ""
-	main()
+	message = captureStdout(main)
+	if message != "No Die Notation\n" {
+		t.Errorf("Fail: main() No Die Notation\n")
+	}
 }
 
 // BenchmarkMain testing
 func BenchmarkMain(b *testing.B) {
 	*cdn = "1d6"
 	for n := 0; n < b.N; n++ {
-		main()
+		captureStdout(main)
 	}
 }
 
