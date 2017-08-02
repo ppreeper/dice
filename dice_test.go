@@ -9,6 +9,10 @@ import (
 	"testing"
 )
 
+type NullWriter int
+
+func (NullWriter) Write([]byte) (int, error) { return 0, nil }
+
 // mulPatternTests use values that you know are right
 var mulPatternTests = []struct {
 	a            string
@@ -154,11 +158,16 @@ func TestRollDie(t *testing.T) {
 	}
 }
 
-// BenchmarkMain testing
+// BenchmarkRollDie testing
 func BenchmarkRollDie(b *testing.B) {
-	*cdn = "1d6"
+	cdn := "1d6"
+	var d Dice
+	var r *rand.Rand
+	r = rand.New(randFixed)
+	d.seed = true
+	d.Pattern(cdn)
 	for n := 0; n < b.N; n++ {
-		main()
+		d.RollDie(r)
 	}
 }
 
@@ -168,14 +177,21 @@ func TestRoll(t *testing.T) {
 		var d Dice
 		d.seed = true
 		d.Roll(mt.a)
-		// fmt.Printf("%v %v\n", d.Results, mt.expected)
-		// fmt.Printf("result lengths %d  %d\t", len(d.Results), len(mt.expected))
-		// fmt.Printf("sum %d  %d\n", d.total, mt.expectedSum)
 		if len(d.Results) == len(mt.expected) {
 			if d.total != mt.expectedSum {
 				t.Errorf("results %v\t%v\tsum not equal %d  %d\n", d.Results, mt.expected, d.total, mt.expectedSum)
 			}
 		}
+	}
+}
+
+// BenchmarkRoll testing
+func BenchmarkRoll(b *testing.B) {
+	cdn := "1d6"
+	var d Dice
+	d.seed = true
+	for n := 0; n < b.N; n++ {
+		d.Roll(cdn)
 	}
 }
 
@@ -198,7 +214,7 @@ func TestMain(t *testing.T) {
 func BenchmarkMain(b *testing.B) {
 	*cdn = "1d6"
 	for n := 0; n < b.N; n++ {
-		captureStdout(main)
+		_ = captureStdout(main)
 	}
 }
 

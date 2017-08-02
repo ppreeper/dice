@@ -161,8 +161,8 @@ func (d *Dice) Sum(s []int, c chan int) {
 
 // Roll soll the die given
 func (d *Dice) Roll(die string) {
-	d.Pattern(die)
-	c := make(chan int)
+	d.Pattern2(die)
+	// c := make(chan int)
 	var r *rand.Rand
 	if d.seed {
 		r = rand.New(randFixed)
@@ -171,23 +171,16 @@ func (d *Dice) Roll(die string) {
 	}
 	for i := 0; i < d.DieCount; i++ {
 		res := d.RollDie(r)
+		if d.DieType == "F" {
+			d.total += res - 2
+		} else {
+			d.total += res
+		}
 		d.Results = append(d.Results, res)
 	}
-	if d.DieType == "F" {
-		for i := 0; i < len(d.Results); i++ {
-			switch d.Results[i] {
-			case 1:
-				d.Results[i] = -1
-			case 2:
-				d.Results[i] = 0
-			case 3:
-				d.Results[i] = 1
-			}
-		}
-	}
 
-	go d.Sum(d.Results, c)
-	d.total = <-c
+	// go d.Sum(d.Results, c)
+	// d.total = <-c
 
 	switch d.DieModFunc {
 	case "+":
