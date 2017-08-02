@@ -4,8 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"math/rand"
+	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -24,6 +26,84 @@ type Dice struct {
 	Results    []int
 	total      int
 	seed       bool
+}
+
+// Pattern2 determine pattern from dice notation string refactor
+func (d *Dice) Pattern2(die string) {
+	// fmt.Fprintf(os.Stdout, "%s\t", die)
+	switch {
+	case strings.HasSuffix(die, "F"):
+		d.DieType = "F"
+		d.DieCount, _ = strconv.Atoi(strings.TrimSuffix(die, "F"))
+		d.DieSides = 3
+		d.DieModFunc = ""
+		d.DieModVal = 0
+		// fmt.Fprintf(os.Stdout, "fudge\t%v", d)
+	case strings.HasPrefix(die, "d"):
+		d.DieType = "d"
+		d.DieCount = 1
+		remainder := strings.TrimPrefix(die, "d")
+		switch {
+		case strings.Contains(remainder, "+"):
+			remVals := strings.Split(remainder, "+")
+			d.DieSides, _ = strconv.Atoi(remVals[0])
+			d.DieModFunc = "+"
+			d.DieModVal, _ = strconv.Atoi(remVals[1])
+		case strings.Contains(remainder, "-"):
+			remVals := strings.Split(remainder, "-")
+			d.DieSides, _ = strconv.Atoi(remVals[0])
+			d.DieModFunc = "-"
+			d.DieModVal, _ = strconv.Atoi(remVals[1])
+		case strings.Contains(remainder, "x"):
+			remVals := strings.Split(remainder, "x")
+			d.DieSides, _ = strconv.Atoi(remVals[0])
+			d.DieModFunc = "x"
+			d.DieModVal, _ = strconv.Atoi(remVals[1])
+		case strings.Contains(remainder, "/"):
+			remVals := strings.Split(remainder, "/")
+			d.DieSides, _ = strconv.Atoi(remVals[0])
+			d.DieModFunc = "/"
+			d.DieModVal, _ = strconv.Atoi(remVals[1])
+		default:
+			d.DieSides, _ = strconv.Atoi(remainder)
+			d.DieModFunc = ""
+			d.DieModVal = 0
+		}
+		// fmt.Fprintf(os.Stdout, "sdie\t%v", d)
+	case strings.Contains(die, "d"):
+		d.DieType = "d"
+		dieSplit := strings.Split(die, "d")
+		d.DieCount, _ = strconv.Atoi(dieSplit[0])
+		remainder := dieSplit[1]
+		switch {
+		case strings.Contains(remainder, "+"):
+			remVals := strings.Split(remainder, "+")
+			d.DieSides, _ = strconv.Atoi(remVals[0])
+			d.DieModFunc = "+"
+			d.DieModVal, _ = strconv.Atoi(remVals[1])
+		case strings.Contains(remainder, "-"):
+			remVals := strings.Split(remainder, "-")
+			d.DieSides, _ = strconv.Atoi(remVals[0])
+			d.DieModFunc = "-"
+			d.DieModVal, _ = strconv.Atoi(remVals[1])
+		case strings.Contains(remainder, "x"):
+			remVals := strings.Split(remainder, "x")
+			d.DieSides, _ = strconv.Atoi(remVals[0])
+			d.DieModFunc = "x"
+			d.DieModVal, _ = strconv.Atoi(remVals[1])
+		case strings.Contains(remainder, "/"):
+			remVals := strings.Split(remainder, "/")
+			d.DieSides, _ = strconv.Atoi(remVals[0])
+			d.DieModFunc = "/"
+			d.DieModVal, _ = strconv.Atoi(remVals[1])
+		default:
+			d.DieSides, _ = strconv.Atoi(remainder)
+			d.DieModFunc = ""
+			d.DieModVal = 0
+		}
+		// fmt.Fprintf(os.Stdout, "mdie\t%v", d)
+	}
+	// fmt.Fprintf(os.Stdout, "\n")
 }
 
 // Pattern determine pattern from dice notation string
@@ -151,10 +231,10 @@ func main() {
 	var d Dice
 	d.seed = false
 	if *cdn == "" {
-		fmt.Println("No Die Notation")
+		fmt.Fprintf(os.Stdout, "No Die Notation\n")
 	} else {
 		d.Roll(*cdn)
-		fmt.Printf("%v %v\n", d.Results, d.total)
+		fmt.Fprintf(os.Stdout, "%v %v\n", d.Results, d.total)
 	}
 	return
 }
