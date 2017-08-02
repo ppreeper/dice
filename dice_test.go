@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bytes"
+	"io"
 	"math/rand"
+	"os"
 	"testing"
 )
 
@@ -189,4 +192,16 @@ func BenchmarkMain(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		main()
 	}
+}
+
+func captureStdout(f func()) string {
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	f()
+	w.Close()
+	os.Stdout = old
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	return buf.String()
 }
