@@ -30,7 +30,6 @@ type Dice struct {
 
 // Pattern2 determine pattern from dice notation string refactor
 func (d *Dice) Pattern2(die string) {
-	// fmt.Fprintf(os.Stdout, "%s\t", die)
 	switch {
 	case strings.HasSuffix(die, "F"):
 		d.DieType = "F"
@@ -38,7 +37,6 @@ func (d *Dice) Pattern2(die string) {
 		d.DieSides = 3
 		d.DieModFunc = ""
 		d.DieModVal = 0
-		// fmt.Fprintf(os.Stdout, "fudge\t%v", d)
 	case strings.HasPrefix(die, "d"):
 		d.DieType = "d"
 		d.DieCount = 1
@@ -69,7 +67,6 @@ func (d *Dice) Pattern2(die string) {
 			d.DieModFunc = ""
 			d.DieModVal = 0
 		}
-		// fmt.Fprintf(os.Stdout, "sdie\t%v", d)
 	case strings.Contains(die, "d"):
 		d.DieType = "d"
 		dieSplit := strings.Split(die, "d")
@@ -101,9 +98,7 @@ func (d *Dice) Pattern2(die string) {
 			d.DieModFunc = ""
 			d.DieModVal = 0
 		}
-		// fmt.Fprintf(os.Stdout, "mdie\t%v", d)
 	}
-	// fmt.Fprintf(os.Stdout, "\n")
 }
 
 // Pattern determine pattern from dice notation string
@@ -115,9 +110,7 @@ func (d *Dice) Pattern(die string) {
 	sPattern := regexp.MustCompile(`^(\d+)?d(\d+)([x/+-](\d+))?`)
 	fudge := regexp.MustCompile(`^(\d+)F`)
 
-	// fmt.Printf("\n%s\t", die)
 	if sPattern.MatchString(die) == true {
-		// fmt.Printf("sPattern\t")
 		d.DieType = "d"
 		dc := dCount.FindSubmatch([]byte(die))
 		sc := sCount.FindSubmatch([]byte(die))
@@ -160,12 +153,9 @@ func (d *Dice) RollDie(r *rand.Rand) int {
 // Sum channel
 func (d *Dice) Sum(s []int, c chan int) {
 	sum := 0
-	// fmt.Printf("%v\n", s)
 	for _, v := range s {
-		// fmt.Printf("%d %d\n", k, v)
 		sum += v
 	}
-	// fmt.Printf("in chan %d\n", sum)
 	c <- sum
 }
 
@@ -173,7 +163,6 @@ func (d *Dice) Sum(s []int, c chan int) {
 func (d *Dice) Roll(die string) {
 	d.Pattern(die)
 	c := make(chan int)
-	// fmt.Printf("DieCount = %d, DieSides = %d\n", d.DieCount, d.DieSides)
 	var r *rand.Rand
 	if d.seed {
 		r = rand.New(randFixed)
@@ -181,12 +170,9 @@ func (d *Dice) Roll(die string) {
 		r = rand.New(randSource)
 	}
 	for i := 0; i < d.DieCount; i++ {
-		// d.RollDie(r)
 		res := d.RollDie(r)
 		d.Results = append(d.Results, res)
-		// fmt.Printf("DieSides = %d, result=%d\n", d.DieSides, r)
 	}
-	// fmt.Println(d.Results)
 	if d.DieType == "F" {
 		for i := 0; i < len(d.Results); i++ {
 			switch d.Results[i] {
@@ -200,28 +186,17 @@ func (d *Dice) Roll(die string) {
 		}
 	}
 
-	// if d.seed == false {
-	// 	randDie.NewSource(time.Now().UnixNano())
 	go d.Sum(d.Results, c)
 	d.total = <-c
-	// } else {
-	// 	go d.Sum(d.Results, c)
-	// 	d.total = <-c
-	// }
 
-	// fmt.Println(d.total)
 	switch d.DieModFunc {
 	case "+":
-		// fmt.Printf("%v %d add %d = %d\n", d.Results, d.Sum, d.DieModVal, d.Sum+d.DieModVal)
 		d.total = d.total + d.DieModVal
 	case "-":
-		// fmt.Printf("%v %d minus %d = %d\n", d.Results, d.Sum, d.DieModVal, d.Sum-d.DieModVal)
 		d.total = d.total - d.DieModVal
 	case "x":
-		// fmt.Printf("%v %d times %d = %d\n", d.Results, d.Sum, d.DieModVal, d.Sum*d.DieModVal)
 		d.total = d.total * d.DieModVal
 	case "/":
-		// fmt.Printf("%v %d divide %d = %d\n", d.Results, d.Sum, d.DieModVal, d.Sum/d.DieModVal)
 		d.total = d.total / d.DieModVal
 	}
 }
