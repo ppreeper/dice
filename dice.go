@@ -151,13 +151,13 @@ func (d *Dice) RollDie(r *rand.Rand) int {
 }
 
 // Sum channel
-func (d *Dice) Sum(s []int, c chan int) {
-	sum := 0
-	for _, v := range s {
-		sum += v
-	}
-	c <- sum
-}
+// func (d *Dice) Sum(s []int, c chan int) {
+// 	sum := 0
+// 	for _, v := range s {
+// 		sum += v
+// 	}
+// 	c <- sum
+// }
 
 // Roll soll the die given
 func (d *Dice) Roll(die string) {

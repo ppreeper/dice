@@ -5,6 +5,7 @@ import (
 	"io"
 	"math/rand"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -12,6 +13,59 @@ import (
 type NullWriter int
 
 func (NullWriter) Write([]byte) (int, error) { return 0, nil }
+
+// patternTest structure of the dice pattern tests
+type patternTest struct {
+	a          string
+	dieCount   int
+	dieType    string
+	dieSides   int
+	dieModFunc string
+	dieModVal  int
+}
+
+func dicePatGen() []patternTest {
+	// var dice []string
+	var patTests []patternTest
+	for i := 0; i < 101; i++ {
+		d := strconv.Itoa(i) + "F"
+		// dice = append(dice, d)
+		patTests = append(patTests, patternTest{d, i, "F", 3, "", 0})
+	}
+	for i := 0; i < 101; i++ {
+		d := "d" + strconv.Itoa(i)
+		// dice = append(dice, d)
+		patTests = append(patTests, patternTest{d, 1, "d", i, "", 0})
+	}
+	for i := 0; i < 101; i++ {
+		for j := 0; j < 101; j++ {
+			d := strconv.Itoa(i) + "d" + strconv.Itoa(j)
+			// dice = append(dice, d)
+			patTests = append(patTests, patternTest{d, i, "d", j, "", 0})
+		}
+	}
+	for i := 0; i < 101; i++ {
+		for _, m := range []string{"+", "-", "x", "/"} {
+			for mv := 0; mv < 101; mv++ {
+				d := "d" + strconv.Itoa(i) + m + strconv.Itoa(mv)
+				// dice = append(dice, d)
+				patTests = append(patTests, patternTest{d, 1, "d", i, m, mv})
+			}
+		}
+	}
+	for i := 0; i < 101; i++ {
+		for j := 0; j < 101; j++ {
+			for _, m := range []string{"+", "-", "x", "/"} {
+				for mv := 0; mv < 101; mv++ {
+					d := strconv.Itoa(i) + "d" + strconv.Itoa(j) + m + strconv.Itoa(mv)
+					// dice = append(dice, d)
+					patTests = append(patTests, patternTest{d, i, "d", j, m, mv})
+				}
+			}
+		}
+	}
+	return patTests
+}
 
 // mulPatternTests use values that you know are right
 var mulPatternTests = []struct {
@@ -44,7 +98,7 @@ var mulPatternTests = []struct {
 
 // TestPattern test
 func TestPattern(t *testing.T) {
-	for _, mt := range mulPatternTests {
+	for _, mt := range dicePatGen() {
 		var d Dice
 		d.seed = true
 		d.Pattern(mt.a)
@@ -66,35 +120,79 @@ func TestPattern(t *testing.T) {
 	}
 }
 
-// BenchmarkPattern
-func BenchmarkPatternd6(b *testing.B) {
-	// run the Fib function b.N times
-	var d Dice
-	for n := 0; n < b.N; n++ {
-		d.Pattern("d6")
-	}
-}
-
-// BenchmarkPattern
-func BenchmarkPattern1d6(b *testing.B) {
-	// run the Fib function b.N times
-	var d Dice
-	for n := 0; n < b.N; n++ {
-		d.Pattern("1d6")
-	}
-}
-
-func BenchmarkPattern6F(b *testing.B) {
-	// run the Fib function b.N times
+func BenchmarkPattern_6F(b *testing.B) {
 	var d Dice
 	for n := 0; n < b.N; n++ {
 		d.Pattern("6F")
 	}
 }
 
+func BenchmarkPattern_d6(b *testing.B) {
+	var d Dice
+	for n := 0; n < b.N; n++ {
+		d.Pattern("d6")
+	}
+}
+
+func BenchmarkPattern_1d6(b *testing.B) {
+	var d Dice
+	for n := 0; n < b.N; n++ {
+		d.Pattern("1d6")
+	}
+}
+
+func BenchmarkPattern_d6add(b *testing.B) {
+	var d Dice
+	for n := 0; n < b.N; n++ {
+		d.Pattern("d6+1")
+	}
+}
+func BenchmarkPattern_d6sub(b *testing.B) {
+	var d Dice
+	for n := 0; n < b.N; n++ {
+		d.Pattern("d6-1")
+	}
+}
+func BenchmarkPattern_d6mul(b *testing.B) {
+	var d Dice
+	for n := 0; n < b.N; n++ {
+		d.Pattern("d6x1")
+	}
+}
+func BenchmarkPattern_d6div(b *testing.B) {
+	var d Dice
+	for n := 0; n < b.N; n++ {
+		d.Pattern("d6/1")
+	}
+}
+func BenchmarkPattern_2d6add(b *testing.B) {
+	var d Dice
+	for n := 0; n < b.N; n++ {
+		d.Pattern("2d6+1")
+	}
+}
+func BenchmarkPattern_2d6sub(b *testing.B) {
+	var d Dice
+	for n := 0; n < b.N; n++ {
+		d.Pattern("2d6-1")
+	}
+}
+func BenchmarkPattern_2d6mul(b *testing.B) {
+	var d Dice
+	for n := 0; n < b.N; n++ {
+		d.Pattern("2d6x1")
+	}
+}
+func BenchmarkPattern_2d6div(b *testing.B) {
+	var d Dice
+	for n := 0; n < b.N; n++ {
+		d.Pattern("2d6/1")
+	}
+}
+
 // TestPattern2 test
 func TestPattern2(t *testing.T) {
-	for _, mt := range mulPatternTests {
+	for _, mt := range dicePatGen() {
 		var d Dice
 		d.seed = true
 		d.Pattern2(mt.a)
@@ -116,29 +214,73 @@ func TestPattern2(t *testing.T) {
 	}
 }
 
-// BenchmarkPattern
-func BenchmarkPattern2d6(b *testing.B) {
-	// run the Fib function b.N times
+func BenchmarkPattern2_6F(b *testing.B) {
+	var d Dice
+	for n := 0; n < b.N; n++ {
+		d.Pattern2("6F")
+	}
+}
+
+func BenchmarkPattern2_d6(b *testing.B) {
 	var d Dice
 	for n := 0; n < b.N; n++ {
 		d.Pattern2("d6")
 	}
 }
 
-// BenchmarkPattern
-func BenchmarkPattern21d6(b *testing.B) {
-	// run the Fib function b.N times
+func BenchmarkPattern2_1d6(b *testing.B) {
 	var d Dice
 	for n := 0; n < b.N; n++ {
 		d.Pattern2("1d6")
 	}
 }
 
-func BenchmarkPattern26F(b *testing.B) {
-	// run the Fib function b.N times
+func BenchmarkPattern2_d6add(b *testing.B) {
 	var d Dice
 	for n := 0; n < b.N; n++ {
-		d.Pattern2("6F")
+		d.Pattern2("d6+1")
+	}
+}
+func BenchmarkPattern2_d6sub(b *testing.B) {
+	var d Dice
+	for n := 0; n < b.N; n++ {
+		d.Pattern2("d6-1")
+	}
+}
+func BenchmarkPattern2_d6mul(b *testing.B) {
+	var d Dice
+	for n := 0; n < b.N; n++ {
+		d.Pattern2("d6x1")
+	}
+}
+func BenchmarkPattern2_d6div(b *testing.B) {
+	var d Dice
+	for n := 0; n < b.N; n++ {
+		d.Pattern2("d6/1")
+	}
+}
+func BenchmarkPattern2_2d6add(b *testing.B) {
+	var d Dice
+	for n := 0; n < b.N; n++ {
+		d.Pattern2("2d6+1")
+	}
+}
+func BenchmarkPattern2_2d6sub(b *testing.B) {
+	var d Dice
+	for n := 0; n < b.N; n++ {
+		d.Pattern2("2d6-1")
+	}
+}
+func BenchmarkPattern2_2d6mul(b *testing.B) {
+	var d Dice
+	for n := 0; n < b.N; n++ {
+		d.Pattern2("2d6x1")
+	}
+}
+func BenchmarkPattern2_2d6div(b *testing.B) {
+	var d Dice
+	for n := 0; n < b.N; n++ {
+		d.Pattern2("2d6/1")
 	}
 }
 
@@ -149,7 +291,7 @@ func TestRollDie(t *testing.T) {
 		d.seed = true
 		var r *rand.Rand
 		r = rand.New(randFixed)
-		d.Pattern(mt.a)
+		d.Pattern2(mt.a)
 		// v := d.RollDie(r)
 		if v := d.RollDie(r); mt.expectedRoll != v {
 			t.Errorf("\nCount %d, Sides %d, Expected %v, got %v",
@@ -165,7 +307,7 @@ func BenchmarkRollDie(b *testing.B) {
 	var r *rand.Rand
 	r = rand.New(randFixed)
 	d.seed = true
-	d.Pattern(cdn)
+	d.Pattern2(cdn)
 	for n := 0; n < b.N; n++ {
 		d.RollDie(r)
 	}
