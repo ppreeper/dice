@@ -1,3 +1,3 @@
-[![Build Status](https://drone.preeper.org/api/badges/peterp/dice/status.svg)](https://drone.preeper.org/peterp/dice)
+[![CircleCI](https://circleci.com/gh/ppreeper/dice/tree/master.svg?style=svg)](https://circleci.com/gh/ppreeper/dice/tree/master)
 # dice
 
