@@ -98,6 +98,30 @@ var mulPatternTests = []struct {
 
 // TestPattern test
 func TestPattern(t *testing.T) {
+	for _, mt := range mulPatternTests {
+		var d Dice
+		d.seed = true
+		d.Pattern(mt.a)
+		if d.DieType != mt.dieType {
+			t.Errorf("\nDieType expected %s, got %s", mt.dieType, d.DieType)
+		}
+		if d.DieCount != mt.dieCount {
+			t.Errorf("\nDieCount expected %d, got %d", mt.dieCount, d.DieCount)
+		}
+		if d.DieSides != mt.dieSides {
+			t.Errorf("\nDieSides expected %d, got %d", mt.dieSides, d.DieSides)
+		}
+		if d.DieModFunc != mt.dieModFunc {
+			t.Errorf("\nDieModFunc %s expected %s, got %s", mt.a, mt.dieModFunc, d.DieModFunc)
+		}
+		if d.DieModVal != mt.dieModVal {
+			t.Errorf("\nDieModVal expected %d, got %d", mt.dieModVal, d.DieModVal)
+		}
+	}
+}
+
+// TestPattern2 test
+func TestPattern2(t *testing.T) {
 	for _, mt := range dicePatGen() {
 		var d Dice
 		d.seed = true
@@ -190,100 +214,6 @@ func BenchmarkPattern_2d6div(b *testing.B) {
 	}
 }
 
-// TestPattern2 test
-func TestPattern2(t *testing.T) {
-	for _, mt := range dicePatGen() {
-		var d Dice
-		d.seed = true
-		d.Pattern2(mt.a)
-		if d.DieType != mt.dieType {
-			t.Errorf("\nDieType expected %s, got %s", mt.dieType, d.DieType)
-		}
-		if d.DieCount != mt.dieCount {
-			t.Errorf("\nDieCount expected %d, got %d", mt.dieCount, d.DieCount)
-		}
-		if d.DieSides != mt.dieSides {
-			t.Errorf("\nDieSides expected %d, got %d", mt.dieSides, d.DieSides)
-		}
-		if d.DieModFunc != mt.dieModFunc {
-			t.Errorf("\nDieModFunc %s expected %s, got %s", mt.a, mt.dieModFunc, d.DieModFunc)
-		}
-		if d.DieModVal != mt.dieModVal {
-			t.Errorf("\nDieModVal expected %d, got %d", mt.dieModVal, d.DieModVal)
-		}
-	}
-}
-
-func BenchmarkPattern2_6F(b *testing.B) {
-	var d Dice
-	for n := 0; n < b.N; n++ {
-		d.Pattern2("6F")
-	}
-}
-
-func BenchmarkPattern2_d6(b *testing.B) {
-	var d Dice
-	for n := 0; n < b.N; n++ {
-		d.Pattern2("d6")
-	}
-}
-
-func BenchmarkPattern2_1d6(b *testing.B) {
-	var d Dice
-	for n := 0; n < b.N; n++ {
-		d.Pattern2("1d6")
-	}
-}
-
-func BenchmarkPattern2_d6add(b *testing.B) {
-	var d Dice
-	for n := 0; n < b.N; n++ {
-		d.Pattern2("d6+1")
-	}
-}
-func BenchmarkPattern2_d6sub(b *testing.B) {
-	var d Dice
-	for n := 0; n < b.N; n++ {
-		d.Pattern2("d6-1")
-	}
-}
-func BenchmarkPattern2_d6mul(b *testing.B) {
-	var d Dice
-	for n := 0; n < b.N; n++ {
-		d.Pattern2("d6x1")
-	}
-}
-func BenchmarkPattern2_d6div(b *testing.B) {
-	var d Dice
-	for n := 0; n < b.N; n++ {
-		d.Pattern2("d6/1")
-	}
-}
-func BenchmarkPattern2_2d6add(b *testing.B) {
-	var d Dice
-	for n := 0; n < b.N; n++ {
-		d.Pattern2("2d6+1")
-	}
-}
-func BenchmarkPattern2_2d6sub(b *testing.B) {
-	var d Dice
-	for n := 0; n < b.N; n++ {
-		d.Pattern2("2d6-1")
-	}
-}
-func BenchmarkPattern2_2d6mul(b *testing.B) {
-	var d Dice
-	for n := 0; n < b.N; n++ {
-		d.Pattern2("2d6x1")
-	}
-}
-func BenchmarkPattern2_2d6div(b *testing.B) {
-	var d Dice
-	for n := 0; n < b.N; n++ {
-		d.Pattern2("2d6/1")
-	}
-}
-
 // TestRollDie test
 func TestRollDie(t *testing.T) {
 	for _, mt := range mulPatternTests {
@@ -291,7 +221,7 @@ func TestRollDie(t *testing.T) {
 		d.seed = true
 		var r *rand.Rand
 		r = rand.New(randFixed)
-		d.Pattern2(mt.a)
+		d.Pattern(mt.a)
 		// v := d.RollDie(r)
 		if v := d.RollDie(r); mt.expectedRoll != v {
 			t.Errorf("\nCount %d, Sides %d, Expected %v, got %v",
@@ -307,7 +237,7 @@ func BenchmarkRollDie(b *testing.B) {
 	var r *rand.Rand
 	r = rand.New(randFixed)
 	d.seed = true
-	d.Pattern2(cdn)
+	d.Pattern(cdn)
 	for n := 0; n < b.N; n++ {
 		d.RollDie(r)
 	}
