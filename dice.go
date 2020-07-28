@@ -96,14 +96,14 @@ func (d *Dice) Pattern(die string) {
 }
 
 // RollDie soll the die given
-func (d *Dice) RollDie(r *rand.Rand) int {
-	var rollVal int
+func (d *Dice) RollDie(r *rand.Rand) (rollVal int) {
 	rollVal = r.Intn(d.DieSides) + 1
-	return rollVal
+	return
 }
 
 // Roll the die given
 func (d *Dice) Roll(die string) {
+	d.Results = []int{}
 	d.Pattern(die)
 	var r *rand.Rand
 	if d.Seed {
