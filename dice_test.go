@@ -1,4 +1,4 @@
-package main
+package dice
 
 import (
 	"bytes"
@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"os"
 	"strconv"
-	"strings"
 	"testing"
 )
 
@@ -264,29 +263,6 @@ func BenchmarkRoll(b *testing.B) {
 	d.seed = true
 	for n := 0; n < b.N; n++ {
 		d.Roll(cdn)
-	}
-}
-
-// TestMain testing
-func TestMain(t *testing.T) {
-	*cdn = "1d6"
-	var message string
-	message = captureStdout(main)
-	if !strings.HasPrefix(message, "[") {
-		t.Errorf("Fail: main() 1d6 fail\n")
-	}
-	*cdn = ""
-	message = captureStdout(main)
-	if message != "No Die Notation\n" {
-		t.Errorf("Fail: main() No Die Notation\n")
-	}
-}
-
-// BenchmarkMain testing
-func BenchmarkMain(b *testing.B) {
-	*cdn = "1d6"
-	for n := 0; n < b.N; n++ {
-		_ = captureStdout(main)
 	}
 }
 

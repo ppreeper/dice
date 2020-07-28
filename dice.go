@@ -1,16 +1,11 @@
-package main
+package dice
 
 import (
-	"flag"
-	"fmt"
 	"math/rand"
-	"os"
 	"strconv"
 	"strings"
 	"time"
 )
-
-var cdn = flag.String("D", "", "Die Notation")
 
 var randSource = rand.NewSource(time.Now().UnixNano())
 var randFixed = rand.NewSource(600)
@@ -136,17 +131,4 @@ func (d *Dice) Roll(die string) {
 	case "/":
 		d.total = d.total / d.DieModVal
 	}
-}
-
-func main() {
-	flag.Parse()
-	var d Dice
-	d.seed = false
-	if *cdn == "" {
-		fmt.Fprintf(os.Stdout, "No Die Notation\n")
-	} else {
-		d.Roll(*cdn)
-		fmt.Fprintf(os.Stdout, "%v %v\n", d.Results, d.total)
-	}
-	return
 }
