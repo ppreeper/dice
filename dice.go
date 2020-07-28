@@ -104,6 +104,7 @@ func (d *Dice) RollDie(r *rand.Rand) (rollVal int) {
 // Roll the die given
 func (d *Dice) Roll(die string) {
 	d.Results = []int{}
+	d.Total = 0
 	d.Pattern(die)
 	var r *rand.Rand
 	if d.Seed {
