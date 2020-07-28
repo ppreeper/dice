@@ -99,7 +99,7 @@ var mulPatternTests = []struct {
 func TestPattern(t *testing.T) {
 	for _, mt := range mulPatternTests {
 		var d Dice
-		d.seed = true
+		d.Seed = true
 		d.Pattern(mt.a)
 		if d.DieType != mt.dieType {
 			t.Errorf("\nDieType expected %s, got %s", mt.dieType, d.DieType)
@@ -123,7 +123,7 @@ func TestPattern(t *testing.T) {
 func TestPattern2(t *testing.T) {
 	for _, mt := range dicePatGen() {
 		var d Dice
-		d.seed = true
+		d.Seed = true
 		d.Pattern(mt.a)
 		if d.DieType != mt.dieType {
 			t.Errorf("\nDieType expected %s, got %s", mt.dieType, d.DieType)
@@ -217,7 +217,7 @@ func BenchmarkPattern_2d6div(b *testing.B) {
 func TestRollDie(t *testing.T) {
 	for _, mt := range mulPatternTests {
 		var d Dice
-		d.seed = true
+		d.Seed = true
 		var r *rand.Rand
 		r = rand.New(randFixed)
 		d.Pattern(mt.a)
@@ -235,7 +235,7 @@ func BenchmarkRollDie(b *testing.B) {
 	var d Dice
 	var r *rand.Rand
 	r = rand.New(randFixed)
-	d.seed = true
+	d.Seed = true
 	d.Pattern(cdn)
 	for n := 0; n < b.N; n++ {
 		d.RollDie(r)
@@ -246,11 +246,11 @@ func BenchmarkRollDie(b *testing.B) {
 func TestRoll(t *testing.T) {
 	for _, mt := range mulPatternTests {
 		var d Dice
-		d.seed = true
+		d.Seed = true
 		d.Roll(mt.a)
 		if len(d.Results) == len(mt.expected) {
-			if d.total != mt.expectedSum {
-				t.Errorf("results %v\t%v\tsum not equal %d  %d\n", d.Results, mt.expected, d.total, mt.expectedSum)
+			if d.Total != mt.expectedSum {
+				t.Errorf("results %v\t%v\tsum not equal %d  %d\n", d.Results, mt.expected, d.Total, mt.expectedSum)
 			}
 		}
 	}
@@ -260,7 +260,7 @@ func TestRoll(t *testing.T) {
 func BenchmarkRoll(b *testing.B) {
 	cdn := "1d6"
 	var d Dice
-	d.seed = true
+	d.Seed = true
 	for n := 0; n < b.N; n++ {
 		d.Roll(cdn)
 	}

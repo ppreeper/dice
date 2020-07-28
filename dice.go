@@ -18,8 +18,8 @@ type Dice struct {
 	DieModFunc string
 	DieModVal  int
 	Results    []int
-	total      int
-	seed       bool
+	Total      int
+	Seed       bool
 }
 
 // Pattern determine pattern from dice notation string refactor
@@ -106,7 +106,7 @@ func (d *Dice) RollDie(r *rand.Rand) int {
 func (d *Dice) Roll(die string) {
 	d.Pattern(die)
 	var r *rand.Rand
-	if d.seed {
+	if d.Seed {
 		r = rand.New(randFixed)
 	} else {
 		r = rand.New(randSource)
@@ -114,21 +114,21 @@ func (d *Dice) Roll(die string) {
 	for i := 0; i < d.DieCount; i++ {
 		res := d.RollDie(r)
 		if d.DieType == "F" {
-			d.total += res - 2
+			d.Total += res - 2
 		} else {
-			d.total += res
+			d.Total += res
 		}
 		d.Results = append(d.Results, res)
 	}
 
 	switch d.DieModFunc {
 	case "+":
-		d.total = d.total + d.DieModVal
+		d.Total = d.Total + d.DieModVal
 	case "-":
-		d.total = d.total - d.DieModVal
+		d.Total = d.Total - d.DieModVal
 	case "x":
-		d.total = d.total * d.DieModVal
+		d.Total = d.Total * d.DieModVal
 	case "/":
-		d.total = d.total / d.DieModVal
+		d.Total = d.Total / d.DieModVal
 	}
 }
