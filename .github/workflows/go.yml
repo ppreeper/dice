@@ -28,9 +28,31 @@ jobs:
       with:
         github-token: ${{secrets.GITHUB_TOKEN}}
         script: |
-          github.issues.setLabels({
+          let newLabel = 'COV: ${{steps.coverage-percent.outputs.coverage}}'
+          const labels = await github.issues.listLabelsOnIssue({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo
+          })
+          console.log(labels.data)
+          let covLabel = null
+          labels.data.forEach(label => {
+            if (label.name.match(/COV:/)) {
+              covLabel = label
+            }
+          })
+          if (covLabel && covLabel.name === newLabel) {
+            covLabel = null
+          }
+          covLabel && github.issues.removeLabel({
             issue_number: context.issue.number,
             owner: context.repo.owner,
             repo: context.repo.repo,
-            labels: ['COV: ${{steps.coverage-percent.outputs.coverage}}']
+            name: covLabel.name,
+          })
+          newLabel && github.issues.addLabels({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            labels: [newLabel]
           })
