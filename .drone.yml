@@ -1,5 +1,0 @@
-pipeline:
-    build:
-        image: golang
-        commands:
-            - go test -cover -race
