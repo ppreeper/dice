@@ -27,7 +27,7 @@ jobs:
     - name: publish code cov
       uses: actions/upload-artifact@v2
       with:
-        name: code covarege report
+        name: code coverage report
         path: coverage.out
     
     - name: Publish cod cov badge
@@ -43,6 +43,4 @@ jobs:
           COLOR=orange
         fi
 
-        curl "https://img.shields.io/badge/coavrege-$total%25-$COLOR" > badge.svg
-        gsutil  -h "Cache-Control: no-cache" cp badge.svg gs://${SOME_BUCKET}/${PROJECT_NAME}/codcov.svg
-        gsutil acl ch -u AllUsers:R gs://${SOME_BUCKET}/${PROJECT_NAME}/codcov.svg
+        curl "https://img.shields.io/badge/coverage-$total%25-$COLOR" > coverage.svg
