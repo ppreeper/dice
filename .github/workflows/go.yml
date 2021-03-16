@@ -23,3 +23,14 @@ jobs:
 
     - name: Test
       run: go test -cover -v ./...
+    - name: Add Coverage Label
+      uses: actions/github-script@v2
+      with:
+        github-token: ${{secrets.GITHUB_TOKEN}}
+        script: |
+          github.issues.setLabels({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            labels: ['COV: ${{steps.coverage-percent.outputs.coverage}}']
+          })
