@@ -23,6 +23,12 @@ jobs:
 
     - name: Test
       run: go test -covermode=count -coverprofile=coverage.out -v ./...
+      
+    - name: publish code cov
+      uses: actions/upload-artifact@v2
+      with:
+        name: code covarege report
+        path: coverage.out
     
     - name: Publish cod cov badge
       run: |
