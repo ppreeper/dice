@@ -1,6 +1,9 @@
-pipeline:
-    build:
-        image: golang
-        commands:
-            - go build
-            - go test -cover -race
+kind: pipeline
+type: docker
+name: default
+
+steps:
+  - name: test
+    image: golang
+    commands:
+      - go test -cover -race
