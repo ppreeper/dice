@@ -2,55 +2,55 @@ name: Go
 
 on:
   push:
-    branches: [ master ]
+    branches: [main]
   pull_request:
-    branches: [ master ]
+    branches: [main]
 
 jobs:
-
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - name: Set up Go
-      uses: actions/setup-go@v2
-      with:
-        go-version: 1.15
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
 
-    - name: Build
-      run: go build -v ./...
+      - name: Build
+        run: go build -v ./...
 
-    - name: Test
-      run: go test -covermode=count -coverprofile=coverage.out -v ./...
-      
-    - name: publish code cov
-      uses: actions/upload-artifact@v2
-      with:
-        name: code coverage report
-        path: coverage.out
-    - name: Add Coverage Label
-      uses: actions/github-script@v2
-      with:
-        github-token: ${{secrets.GITHUB_TOKEN}}
-        script: |
-          github.issues.setLabels({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            labels: ['COV: 37.5']
-          })
-    
-    - name: Publish cod cov badge
-      run: |
-        set -x
-        total=`go tool cover -func=coverage.out | grep total | grep -Eo '[0-9]+\.[0-9]+'`
+      - name: Test
+        run: go test -covermode=count -coverprofile=coverage.out -v ./...
 
-        if (( $(echo "$total <= 50" | bc -l) )) ; then
-          COLOR=red
-        elif (( $(echo "$total > 80" | bc -l) )); then
-          COLOR=green
-        else
-          COLOR=orange
-        fi
+      - name: publish code cov
+        uses: actions/upload-artifact@v2
+        with:
+          name: code coverage report
+          path: coverage.out
 
-        curl "https://img.shields.io/badge/coverage-$total%25-$COLOR" > coverage.svg
+      - name: Add Coverage Label
+        uses: actions/github-script@v2
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            github.issues.setLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['COV: 37.5']
+            })
+
+      - name: Publish cod cov badge
+        run: |
+          set -x
+          total=`go tool cover -func=coverage.out | grep total | grep -Eo '[0-9]+\.[0-9]+'`
+
+          if (( $(echo "$total <= 50" | bc -l) )) ; then
+            COLOR=red
+          elif (( $(echo "$total > 80" | bc -l) )); then
+            COLOR=green
+          else
+            COLOR=orange
+          fi
+
+          curl "https://img.shields.io/badge/coverage-$total%25-$COLOR" > coverage.svg
