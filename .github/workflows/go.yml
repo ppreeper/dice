@@ -24,12 +24,6 @@ jobs:
       - name: test
         run: go test -cover -covermode=atomic -coverprofile=coverage.out -race -v ./...
 
-      - name: publish code cov
-        uses: actions/upload-artifact@v2
-        with:
-          name: coverage.out
-          path: coverage.out
-
       - name: Publish cod cov badge
         run: |
           set -x
@@ -43,10 +37,4 @@ jobs:
             COLOR=orange
           fi
 
-          curl "https://img.shields.io/badge/coverage-$total%25-$COLOR" > coverage.svg
-
-      - name: publish coverage.svg
-        uses: actions/upload-artifact@v2
-        with:
-          name: coverage.svg
-          path: coverage.svg
+          curl "https://img.shields.io/badge/coverage-$total%25-$COLOR" > public/coverage.svg
