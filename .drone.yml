@@ -6,5 +6,5 @@ steps:
   - name: go-1-17
     image: golang:1.17
     commands:
-      - go build
-      - go test -cover -race
+      - go build -v ./...
+      - go test -cover -race -v ./...
