@@ -37,4 +37,4 @@ jobs:
             COLOR=orange
           fi
 
-          curl "https://img.shields.io/badge/coverage-$total%25-$COLOR" > public/coverage.svg
+          curl "https://img.shields.io/badge/coverage-$total%25-$COLOR" > coverage.svg
