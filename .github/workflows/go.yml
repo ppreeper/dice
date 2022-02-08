@@ -27,19 +27,8 @@ jobs:
       - name: publish code cov
         uses: actions/upload-artifact@v2
         with:
-          name: code coverage report
+          name: coverage.out
           path: coverage.out
-
-      - name: Add Coverage Label
-        uses: actions/github-script@v2
-        with:
-          github-token: ${{secrets.GITHUB_TOKEN}}
-          script: |
-            github.issues.setLabels({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              labels: ['COV: 37.5']
-            })
 
       - name: Publish cod cov badge
         run: |
@@ -55,3 +44,9 @@ jobs:
           fi
 
           curl "https://img.shields.io/badge/coverage-$total%25-$COLOR" > coverage.svg
+
+      - name: publish coverage.svg
+        uses: actions/upload-artifact@v2
+        with:
+          name: coverage.svg
+          path: coverage.svg
