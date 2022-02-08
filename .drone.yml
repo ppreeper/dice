@@ -3,7 +3,9 @@ type: docker
 name: default
 
 steps:
-  - name: test
-    image: golang
+  - name: go-1-17
+    image: golang:1.17
     commands:
+      - go get
+      - go build
       - go test -cover -race
