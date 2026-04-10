@@ -2,7 +2,7 @@ package dice
 
 import (
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"sort"
 	"strconv"
 	"strings"
@@ -50,9 +50,10 @@ type RollResult struct {
 
 var (
 	// defaultRand is safe to use concurrently (rand.Rand has internal locking)
-	defaultRand = rand.New(rand.NewSource(time.Now().UnixNano()))
+	// Use PCG seeded from the current time.
+	defaultRand = rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), uint64(time.Now().UnixNano()>>1)))
 	// fixedRand is provided for deterministic behavior in examples/tests if needed
-	fixedRand = rand.New(rand.NewSource(600))
+	fixedRand = rand.New(rand.NewPCG(600, 601))
 )
 
 // Parse parses a dice notation string into a ParsedDice.
@@ -228,7 +229,7 @@ func RollParsed(pd ParsedDice, rng *rand.Rand) (RollResult, error) {
 			if totalRollCalls > MaxTotalRolls {
 				return res, fmt.Errorf("exceeded max roll limit")
 			}
-			die := rng.Intn(pd.Sides) + 1
+			die := rng.IntN(pd.Sides) + 1
 			adj := die - 2
 			res.AllRolls = append(res.AllRolls, adj)
 		}
@@ -241,7 +242,7 @@ func RollParsed(pd ParsedDice, rng *rand.Rand) (RollResult, error) {
 			if totalRollCalls > MaxTotalRolls {
 				return res, fmt.Errorf("exceeded max roll limit")
 			}
-			die := rng.Intn(pd.Sides) + 1
+			die := rng.IntN(pd.Sides) + 1
 			dieTotal := die
 			if pd.Explode {
 				// keep exploding while we hit the maximum face
@@ -250,7 +251,7 @@ func RollParsed(pd ParsedDice, rng *rand.Rand) (RollResult, error) {
 					if totalRollCalls > MaxTotalRolls {
 						return res, fmt.Errorf("exceeded max roll limit")
 					}
-					die = rng.Intn(pd.Sides) + 1
+					die = rng.IntN(pd.Sides) + 1
 					dieTotal += die
 				}
 			}

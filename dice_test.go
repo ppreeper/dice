@@ -1,12 +1,12 @@
 package dice
 
 import (
-	"math/rand"
+	"math/rand/v2"
 	"testing"
 )
 
 // small, deterministic RNG for tests
-var testRNG = rand.New(rand.NewSource(600))
+var testRNG = rand.New(rand.NewPCG(600, 601))
 
 var parseTests = []struct {
 	in      string
@@ -159,7 +159,7 @@ func BenchmarkParseExplode(b *testing.B) {
 
 func BenchmarkRollExplode(b *testing.B) {
 	pd, _ := Parse("2d6!")
-	rng := rand.New(rand.NewSource(600))
+	rng := rand.New(rand.NewPCG(600, 601))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = RollParsed(pd, rng)
@@ -168,7 +168,7 @@ func BenchmarkRollExplode(b *testing.B) {
 
 func BenchmarkRollKeepDrop(b *testing.B) {
 	pd, _ := Parse("4d6kh3")
-	rng := rand.New(rand.NewSource(600))
+	rng := rand.New(rand.NewPCG(600, 601))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = RollParsed(pd, rng)
@@ -177,7 +177,7 @@ func BenchmarkRollKeepDrop(b *testing.B) {
 
 func BenchmarkRollManyDice(b *testing.B) {
 	pd, _ := Parse("100d6")
-	rng := rand.New(rand.NewSource(600))
+	rng := rand.New(rand.NewPCG(600, 601))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = RollParsed(pd, rng)
