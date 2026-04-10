@@ -49,7 +49,8 @@ res, err := dice.RollParsed(pd, nil) // use default RNG
 Deterministic tests (seed RNG):
 
 ```go
-rng := rand.New(rand.NewSource(600))
+// rand/v2 PCG-based RNG for deterministic results
+rng := rand.New(rand.NewPCG(600, 601))
 pd, _ := dice.Parse("4d6kh3")
 res, _ := dice.RollParsed(pd, rng)
 // res contains deterministic results
@@ -60,6 +61,24 @@ Exploding dice and keep-highest example:
 ```go
 pd, _ := dice.Parse("4d6!kh3")
 res, _ := dice.RollParsed(pd, nil)
+```
+
+Rerolls and success counting
+----------------------------
+
+```go
+// reroll ones until not 1
+pd, _ := dice.Parse("4d6r1")
+res, _ := dice.RollParsed(pd, nil)
+
+// reroll once (ro)
+pd2, _ := dice.Parse("4d6ro1")
+res2, _ := dice.RollParsed(pd2, nil)
+
+// success counting: count how many d10 results are >= 8
+pd3, _ := dice.Parse("10d10>=8")
+res3, _ := dice.RollParsed(pd3, nil)
+// res3.Successes contains the number of successes
 ```
 
 Contributing & extending
