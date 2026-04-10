@@ -42,6 +42,9 @@ type ParsedDice struct {
 	RerollOnce  bool
 	RerollOp    string // comparator: "=", "<", ">", "<=", ">=", "!="
 	RerollCount int    // max rerolls per die (0 = unlimited)
+	// Reroll range/list support
+	RerollHi   int
+	RerollList []int
 	// Penetrating explosion: true when '!p' is used
 	Penetrate bool
 
@@ -236,6 +239,47 @@ func Parse(s string) (ParsedDice, error) {
 			pd.RerollVal = rv
 			pd.RerollOnce = once
 			pd.RerollOp = rerOp
+			// after the initial value, allow a range (e.g. 1-3) or list (e.g. 1,3,5)
+			if pos < len(right) && right[pos] == '-' {
+				// range
+				pos++
+				if pos >= len(right) || right[pos] < '0' || right[pos] > '9' {
+					return pd, fmt.Errorf("parse error: missing range upper bound in %q", s)
+				}
+				start2 := pos
+				for pos < len(right) && right[pos] >= '0' && right[pos] <= '9' {
+					pos++
+				}
+				hi, err := strconv.Atoi(right[start2:pos])
+				if err != nil {
+					return pd, fmt.Errorf("invalid reroll range upper bound: %w", err)
+				}
+				if hi < pd.RerollVal {
+					return pd, fmt.Errorf("invalid reroll range: upper bound %d less than lower bound %d", hi, pd.RerollVal)
+				}
+				pd.RerollHi = hi
+			} else if pos < len(right) && right[pos] == ',' {
+				// list
+				var list []int
+				list = append(list, pd.RerollVal)
+				for pos < len(right) && right[pos] == ',' {
+					pos++
+					if pos >= len(right) || right[pos] < '0' || right[pos] > '9' {
+						return pd, fmt.Errorf("parse error: missing list value in %q", s)
+					}
+					start2 := pos
+					for pos < len(right) && right[pos] >= '0' && right[pos] <= '9' {
+						pos++
+					}
+					v2, err := strconv.Atoi(right[start2:pos])
+					if err != nil {
+						return pd, fmt.Errorf("invalid reroll list value: %w", err)
+					}
+					list = append(list, v2)
+				}
+				pd.RerollList = list
+			}
+
 			if pos < len(right) && right[pos] == '#' {
 				pos++
 				if pos >= len(right) || right[pos] < '0' || right[pos] > '9' {
@@ -253,6 +297,11 @@ func Parse(s string) (ParsedDice, error) {
 					return pd, fmt.Errorf("invalid reroll count: %d", rc)
 				}
 				pd.RerollCount = rc
+			}
+			// safety: disallow unbounded "r!=" (reroll while != val) without per-die cap
+			// allow 'ro' (reroll once) even with '!=' since it's bounded
+			if pd.RerollOp == "!=" && !pd.RerollOnce && pd.RerollCount == 0 {
+				return pd, fmt.Errorf("unsafe reroll operator '!=' used without per-die cap (#N); add '#N' to limit rerolls")
 			}
 			continue
 		case '>', '<', '=', '!':
@@ -344,6 +393,19 @@ func RollParsed(pd ParsedDice, rng *rand.Rand) (RollResult, error) {
 	totalRollCalls := 0
 	// helper to evaluate reroll predicate on a face value
 	matchReroll := func(face int) bool {
+		// list takes precedence
+		if len(pd.RerollList) > 0 {
+			for _, v := range pd.RerollList {
+				if face == v {
+					return true
+				}
+			}
+			return false
+		}
+		// range
+		if pd.RerollHi != 0 {
+			return face >= pd.RerollVal && face <= pd.RerollHi
+		}
 		if pd.RerollVal == 0 {
 			return false
 		}

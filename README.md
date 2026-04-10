@@ -23,11 +23,14 @@ Supported notation (subset):
  - Penetrating explosions: `!p` after sides, e.g. `1d6!p` (each extra exploded roll contributes face-1)
 - Keep/Drop: `kh`/`kl`/`dh`/`dl` or `k`/`d` shorthand, with a count. Examples: `4d6kh3`, `4d6d1`, `4d6k3`.
 - Percentile: `d%` is accepted as `d100`.
- - Rerolls: `r` / `ro` with comparators and per-die cap. Examples:
-   - `r1` (reroll faces equal to 1 until they are different)
-   - `ro1` (reroll once if equal to 1)
-   - comparator forms: `r<2`, `r>=5`, `r!=3`
-   - per-die cap: append `#N` to limit rerolls per die, e.g. `r1#2`
+- Rerolls: `r` / `ro` with comparators and per-die cap. Examples:
+  - `r1` (reroll faces equal to 1 until they are different)
+  - `ro1` (reroll once if equal to 1)
+  - comparator forms: `r<2`, `r>=5`, `r!=3`
+  - ranges: `rA-B` will reroll while face ∈ [A,B], e.g. `r1-3` rerolls faces 1,2,3
+  - lists: `rA,B,C` rerolls when face is any of the listed values, e.g. `r1,3,5`
+  - per-die cap: append `#N` to limit rerolls per die, e.g. `r1#2` or `r1-3#2`
+  - safety: the unsafe operator `r!=N` (reroll while face != N) is only allowed when paired with a per-die cap `#N` or when used as a one-time reroll `ro!=N`. Unbounded `r!=N` without `#N` will be rejected at parse time.
  - Success counting: `>=`, `>`, `<=`, `<`, `=` after the dice term, e.g. `10d10>=8`.
 
 Limits & safety
@@ -106,6 +109,7 @@ After the `dS` portion (and optional `!` for exploding) tokens may appear in any
 
 - Keep/Drop: `k` or `d` optionally followed by `h`/`l` and a count, e.g. `kh3` or `d2`.
 - Reroll: `r` or `ro` plus comparator and value. Comparator can be `=`, `!=`, `<`, `<=`, `>`, `>=`. Example: `r<2`, `ro!=3`, `r1` (shorthand for `r=1`). Optionally append per-die cap `#N` (e.g. `r1#2`).
+ - Reroll: `r` or `ro` plus comparator, value, range, or list. Comparator can be `=`, `!=`, `<`, `<=`, `>`, `>=`. Examples: `r<2`, `ro!=3`, `r1` (shorthand for `r=1`). Ranges (`rA-B`) and lists (`rA,B,C`) are supported: `r1-3`, `r1,3,5`. Optionally append per-die cap `#N` (e.g. `r1#2`, `r1-3#2`). `r!=N` is only allowed with `ro` or `#N` (see safety note above).
 - Success operator: `>=N`, `>N`, `<=N`, `<N`, `=N` (counts successes among kept dice).
 - Arithmetic modifier: `+N`, `-N`, `xN`.
 

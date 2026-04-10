@@ -181,7 +181,7 @@ func TestSuccessCounting(t *testing.T) {
 }
 
 func TestParseRerollComparators(t *testing.T) {
-	cases := []struct {
+	success := []struct {
 		in    string
 		op    string
 		val   int
@@ -192,15 +192,23 @@ func TestParseRerollComparators(t *testing.T) {
 		{"3d6r>=5", ">=", 5, false, 0},
 		{"2d6ro1#1", "=", 1, true, 1},
 		{"4d6r1#2", "=", 1, false, 2},
-		{"3d6r!=3", "!=", 3, false, 0},
+		{"3d6r!=3#2", "!=", 3, false, 2},
 	}
-	for _, c := range cases {
+	for _, c := range success {
 		pd, err := Parse(c.in)
 		if err != nil {
 			t.Fatalf("parse %q err: %v", c.in, err)
 		}
 		if pd.RerollOp != c.op || pd.RerollVal != c.val || pd.RerollOnce != c.once || pd.RerollCount != c.count {
 			t.Fatalf("Parse(%q) = %+v, want op=%q val=%d once=%v count=%d", c.in, pd, c.op, c.val, c.once, c.count)
+		}
+	}
+
+	// cases expected to fail parse-time due to unsafe use of '!=' without per-die cap
+	bad := []string{"3d6r!=3"}
+	for _, in := range bad {
+		if _, err := Parse(in); err == nil {
+			t.Fatalf("expected parse error for unsafe reroll %q", in)
 		}
 	}
 }
@@ -268,6 +276,86 @@ func TestRerollComparatorsVarious(t *testing.T) {
 		if pr.RerollOnce && res.RerollsPerformed > pr.Count {
 			t.Fatalf("ro performed too many rerolls: %d > %d", res.RerollsPerformed, pr.Count)
 		}
+	}
+}
+
+func TestParseRerollRangeAndList(t *testing.T) {
+	cases := []struct {
+		in       string
+		wantHi   int
+		wantList []int
+	}{
+		{"4d6r1-3", 3, nil},
+		{"4d6ro1-2", 2, nil},
+		{"4d6r1,3,5", 0, []int{1, 3, 5}},
+		{"4d6r1-3#2", 3, nil},
+	}
+	for _, c := range cases {
+		pd, err := Parse(c.in)
+		if err != nil {
+			t.Fatalf("parse %q err: %v", c.in, err)
+		}
+		if pd.RerollHi != c.wantHi {
+			t.Fatalf("Parse(%q) RerollHi = %d want %d", c.in, pd.RerollHi, c.wantHi)
+		}
+		if len(c.wantList) != 0 {
+			if len(pd.RerollList) != len(c.wantList) {
+				t.Fatalf("Parse(%q) list len = %d want %d", c.in, len(pd.RerollList), len(c.wantList))
+			}
+			for i := range c.wantList {
+				if pd.RerollList[i] != c.wantList[i] {
+					t.Fatalf("Parse(%q) list mismatch: got %+v want %+v", c.in, pd.RerollList, c.wantList)
+				}
+			}
+		}
+	}
+}
+
+func TestRerollRangeBehavior(t *testing.T) {
+	pr, err := Parse("4d6r1-3")
+	if err != nil {
+		t.Fatalf("parse err: %v", err)
+	}
+	rng := rand.New(rand.NewPCG(600, 601))
+	res, err := RollParsed(pr, rng)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	for _, v := range res.AllRolls {
+		if v >= 1 && v <= 3 {
+			t.Fatalf("found forbidden value %d despite r1-3, rolls: %+v", v, res.AllRolls)
+		}
+	}
+}
+
+func TestRerollListBehavior(t *testing.T) {
+	pr, err := Parse("4d6r1,3,5")
+	if err != nil {
+		t.Fatalf("parse err: %v", err)
+	}
+	rng := rand.New(rand.NewPCG(600, 601))
+	res, err := RollParsed(pr, rng)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	forbidden := map[int]struct{}{1: {}, 3: {}, 5: {}}
+	for _, v := range res.AllRolls {
+		if _, ok := forbidden[v]; ok {
+			t.Fatalf("found forbidden value %d despite r1,3,5, rolls: %+v", v, res.AllRolls)
+		}
+	}
+}
+
+func TestRerollRangeParseErrors(t *testing.T) {
+	bad := []string{"4d6r1-", "4d6r,3", "4d6r5-2"}
+	for _, in := range bad {
+		if _, err := Parse(in); err == nil {
+			t.Fatalf("expected parse error for %q", in)
+		}
+	}
+	// ensure r!= cannot be combined with range without cap
+	if _, err := Parse("4d6r!=1-3"); err == nil {
+		t.Fatalf("expected parse error for unsafe r!= with range")
 	}
 }
 
