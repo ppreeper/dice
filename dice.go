@@ -36,6 +36,16 @@ type ParsedDice struct {
 	// Modifiers applied to the final total
 	ModFunc string // "", "+", "-", "x", "/"
 	ModVal  int
+
+	// Reroll: rN (reroll until not N) or roN (reroll once)
+	RerollVal   int
+	RerollOnce  bool
+	RerollOp    string // comparator: "=", "<", ">", "<=", ">=", "!="
+	RerollCount int    // max rerolls per die (0 = unlimited)
+
+	// Success counting: operator and threshold (e.g. ">=8")
+	SuccessOp  string
+	SuccessVal int
 }
 
 // RollResult is a pure result of rolling a ParsedDice with a given RNG.
@@ -46,15 +56,17 @@ type RollResult struct {
 	AllRolls []int
 	Rolls    []int
 	Total    int
+	// Successes counts how many kept rolls meet the success condition (if any)
+	Successes int
+	// RerollsPerformed counts how many extra rolls were executed due to rerolls
+	RerollsPerformed int
+	// TotalRollCalls is the total number of RNG calls performed during the roll
+	TotalRollCalls int
 }
 
-var (
-	// defaultRand is safe to use concurrently (rand.Rand has internal locking)
-	// Use PCG seeded from the current time.
-	defaultRand = rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), uint64(time.Now().UnixNano()>>1)))
-	// fixedRand is provided for deterministic behavior in examples/tests if needed
-	fixedRand = rand.New(rand.NewPCG(600, 601))
-)
+// defaultRand is safe to use concurrently (rand.Rand has internal locking)
+// Use PCG seeded from the current time.
+var defaultRand = rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), uint64(time.Now().UnixNano()>>1)))
 
 // Parse parses a dice notation string into a ParsedDice.
 // Supported (expanded) forms include basic exploding (!) and keep/drop (kh/kl/dh/dl or k/d).
@@ -147,56 +159,158 @@ func Parse(s string) (ParsedDice, error) {
 		}
 	}
 
-	// optional keep/drop: k or d, optionally followed by h/l, then count. e.g. kh3, d2, kl1
-	if pos < len(right) && (right[pos] == 'k' || right[pos] == 'd') {
-		pd.KeepDropAction = string(right[pos])
-		pos++
-		// optional h/l
-		if pos < len(right) && (right[pos] == 'h' || right[pos] == 'l') {
-			pd.KeepDropWhich = string(right[pos])
+	// flexible parsing: accept tokens in any order after optional '!'
+	for pos < len(right) {
+		ch := right[pos]
+		switch ch {
+		case 'k', 'd':
+			// keep/drop
+			pd.KeepDropAction = string(ch)
 			pos++
-		} else {
-			// defaults: k -> h, d -> l
-			if pd.KeepDropAction == "k" {
-				pd.KeepDropWhich = "h"
+			if pos < len(right) && (right[pos] == 'h' || right[pos] == 'l') {
+				pd.KeepDropWhich = string(right[pos])
+				pos++
 			} else {
-				pd.KeepDropWhich = "l"
+				if pd.KeepDropAction == "k" {
+					pd.KeepDropWhich = "h"
+				} else {
+					pd.KeepDropWhich = "l"
+				}
 			}
-		}
-		// parse count
-		if pos >= len(right) || right[pos] < '0' || right[pos] > '9' {
-			return pd, fmt.Errorf("missing keep/drop count")
-		}
-		start := pos
-		for pos < len(right) && right[pos] >= '0' && right[pos] <= '9' {
-			pos++
-		}
-		kv, err := strconv.Atoi(right[start:pos])
-		if err != nil {
-			return pd, fmt.Errorf("invalid keep/drop count: %w", err)
-		}
-		pd.KeepDropCount = kv
-	}
-
-	// optional arithmetic modifier
-	if pos < len(right) {
-		op := right[pos]
-		if op == '+' || op == '-' || op == 'x' || op == '*' || op == '/' {
-			pd.ModFunc = string(op)
-			if pd.ModFunc == "*" {
-				pd.ModFunc = "x"
+			if pos >= len(right) || right[pos] < '0' || right[pos] > '9' {
+				return pd, fmt.Errorf("parse error: missing keep/drop count in %q", s)
 			}
-			pos++
-			if pos >= len(right) {
-				return pd, fmt.Errorf("missing modifier value")
+			start := pos
+			for pos < len(right) && right[pos] >= '0' && right[pos] <= '9' {
+				pos++
 			}
-			mv, err := strconv.Atoi(right[pos:])
+			kv, err := strconv.Atoi(right[start:pos])
 			if err != nil {
-				return pd, fmt.Errorf("invalid modifier value: %w", err)
+				return pd, fmt.Errorf("invalid keep/drop count: %w", err)
 			}
-			pd.ModVal = mv
-			pos = len(right)
-		} else {
+			pd.KeepDropCount = kv
+			continue
+		case 'r':
+			// reroll
+			pos++
+			once := false
+			if pos < len(right) && right[pos] == 'o' {
+				once = true
+				pos++
+			}
+			rerOp := ""
+			if pos+1 < len(right) {
+				two := right[pos : pos+2]
+				if two == ">=" || two == "<=" || two == "!=" {
+					rerOp = two
+					pos += 2
+				}
+			}
+			if rerOp == "" && pos < len(right) {
+				if right[pos] == '>' || right[pos] == '<' || right[pos] == '=' {
+					rerOp = string(right[pos])
+					pos++
+				}
+			}
+			if rerOp == "" {
+				rerOp = "="
+			}
+			if pos >= len(right) || right[pos] < '0' || right[pos] > '9' {
+				return pd, fmt.Errorf("parse error: missing reroll value in %q", s)
+			}
+			start := pos
+			for pos < len(right) && right[pos] >= '0' && right[pos] <= '9' {
+				pos++
+			}
+			rv, err := strconv.Atoi(right[start:pos])
+			if err != nil {
+				return pd, fmt.Errorf("invalid reroll value: %w", err)
+			}
+			pd.RerollVal = rv
+			pd.RerollOnce = once
+			pd.RerollOp = rerOp
+			if pos < len(right) && right[pos] == '#' {
+				pos++
+				if pos >= len(right) || right[pos] < '0' || right[pos] > '9' {
+					return pd, fmt.Errorf("parse error: missing reroll count in %q", s)
+				}
+				start := pos
+				for pos < len(right) && right[pos] >= '0' && right[pos] <= '9' {
+					pos++
+				}
+				rc, err := strconv.Atoi(right[start:pos])
+				if err != nil {
+					return pd, fmt.Errorf("invalid reroll count: %w", err)
+				}
+				if rc < 0 {
+					return pd, fmt.Errorf("invalid reroll count: %d", rc)
+				}
+				pd.RerollCount = rc
+			}
+			continue
+		case '>', '<', '=', '!':
+			// success operator: two-char first (>=, <=, !=)
+			if pos+1 < len(right) {
+				two := right[pos : pos+2]
+				if two == ">=" || two == "<=" || two == "!=" {
+					pos += 2
+					if pos >= len(right) || right[pos] < '0' || right[pos] > '9' {
+						return pd, fmt.Errorf("parse error: missing success value in %q", s)
+					}
+					start := pos
+					for pos < len(right) && right[pos] >= '0' && right[pos] <= '9' {
+						pos++
+					}
+					sv, err := strconv.Atoi(right[start:pos])
+					if err != nil {
+						return pd, fmt.Errorf("invalid success value: %w", err)
+					}
+					pd.SuccessOp = two
+					pd.SuccessVal = sv
+					continue
+				}
+			}
+			// single-char success op
+			if right[pos] == '>' || right[pos] == '<' || right[pos] == '=' {
+				op := right[pos]
+				pos++
+				if pos >= len(right) || right[pos] < '0' || right[pos] > '9' {
+					return pd, fmt.Errorf("parse error: missing success value in %q", s)
+				}
+				start := pos
+				for pos < len(right) && right[pos] >= '0' && right[pos] <= '9' {
+					pos++
+				}
+				sv, err := strconv.Atoi(right[start:pos])
+				if err != nil {
+					return pd, fmt.Errorf("invalid success value: %w", err)
+				}
+				pd.SuccessOp = string(op)
+				pd.SuccessVal = sv
+				continue
+			}
+			return pd, fmt.Errorf("unexpected token %q in %q", string(right[pos]), s)
+		case '+', '-', 'x', '*', '/':
+			// arithmetic modifier -- consumes the rest and returns
+			op := right[pos]
+			if op == '+' || op == '-' || op == 'x' || op == '*' || op == '/' {
+				pd.ModFunc = string(op)
+				if pd.ModFunc == "*" {
+					pd.ModFunc = "x"
+				}
+				pos++
+				if pos >= len(right) {
+					return pd, fmt.Errorf("parse error: missing modifier value in %q", s)
+				}
+				mv, err := strconv.Atoi(right[pos:])
+				if err != nil {
+					return pd, fmt.Errorf("invalid modifier value: %w", err)
+				}
+				pd.ModVal = mv
+				pos = len(right)
+				break
+			}
+		default:
 			return pd, fmt.Errorf("unexpected token %q in %q", string(right[pos]), s)
 		}
 	}
@@ -221,15 +335,65 @@ func RollParsed(pd ParsedDice, rng *rand.Rand) (RollResult, error) {
 
 	// roll each die, allowing exploding to add to that die's total
 	totalRollCalls := 0
+	// helper to evaluate reroll predicate on a face value
+	matchReroll := func(face int) bool {
+		if pd.RerollVal == 0 {
+			return false
+		}
+		switch pd.RerollOp {
+		case "=":
+			return face == pd.RerollVal
+		case "!=":
+			return face != pd.RerollVal
+		case ">":
+			return face > pd.RerollVal
+		case "<":
+			return face < pd.RerollVal
+		case ">=":
+			return face >= pd.RerollVal
+		case "<=":
+			return face <= pd.RerollVal
+		default:
+			return face == pd.RerollVal
+		}
+	}
 	switch pd.Type {
 	case "F":
 		// Fate: generate 1..3 then convert to -1..1
 		for i := 0; i < pd.Count; i++ {
+			// roll
 			totalRollCalls++
 			if totalRollCalls > MaxTotalRolls {
 				return res, fmt.Errorf("exceeded max roll limit")
 			}
 			die := rng.IntN(pd.Sides) + 1
+			// apply reroll predicate if requested (works on the raw face value)
+			if matchReroll(die) {
+				if pd.RerollOnce {
+					// reroll once
+					totalRollCalls++
+					if totalRollCalls > MaxTotalRolls {
+						return res, fmt.Errorf("exceeded max roll limit")
+					}
+					die = rng.IntN(pd.Sides) + 1
+					res.RerollsPerformed++
+				} else {
+					// reroll until predicate false or per-die limit reached
+					per := 0
+					for matchReroll(die) {
+						if pd.RerollCount > 0 && per >= pd.RerollCount {
+							break
+						}
+						totalRollCalls++
+						if totalRollCalls > MaxTotalRolls {
+							return res, fmt.Errorf("exceeded max roll limit")
+						}
+						die = rng.IntN(pd.Sides) + 1
+						res.RerollsPerformed++
+						per++
+					}
+				}
+			}
 			adj := die - 2
 			res.AllRolls = append(res.AllRolls, adj)
 		}
@@ -238,11 +402,39 @@ func RollParsed(pd ParsedDice, rng *rand.Rand) (RollResult, error) {
 			return res, fmt.Errorf("invalid sides %d", pd.Sides)
 		}
 		for i := 0; i < pd.Count; i++ {
+			// initial roll
 			totalRollCalls++
 			if totalRollCalls > MaxTotalRolls {
 				return res, fmt.Errorf("exceeded max roll limit")
 			}
 			die := rng.IntN(pd.Sides) + 1
+
+			// apply reroll predicate before exploding
+			if matchReroll(die) {
+				if pd.RerollOnce {
+					totalRollCalls++
+					if totalRollCalls > MaxTotalRolls {
+						return res, fmt.Errorf("exceeded max roll limit")
+					}
+					die = rng.IntN(pd.Sides) + 1
+					res.RerollsPerformed++
+				} else {
+					per := 0
+					for matchReroll(die) {
+						if pd.RerollCount > 0 && per >= pd.RerollCount {
+							break
+						}
+						totalRollCalls++
+						if totalRollCalls > MaxTotalRolls {
+							return res, fmt.Errorf("exceeded max roll limit")
+						}
+						die = rng.IntN(pd.Sides) + 1
+						res.RerollsPerformed++
+						per++
+					}
+				}
+			}
+
 			dieTotal := die
 			if pd.Explode {
 				// keep exploding while we hit the maximum face
@@ -364,6 +556,31 @@ func RollParsed(pd ParsedDice, rng *rand.Rand) (RollResult, error) {
 	for _, v := range res.Rolls {
 		res.Total += v
 	}
+
+	// count successes if requested (applies to kept rolls)
+	if pd.SuccessOp != "" {
+		for _, v := range res.Rolls {
+			ok := false
+			switch pd.SuccessOp {
+			case ">=":
+				ok = v >= pd.SuccessVal
+			case "<=":
+				ok = v <= pd.SuccessVal
+			case ">":
+				ok = v > pd.SuccessVal
+			case "<":
+				ok = v < pd.SuccessVal
+			case "=":
+				ok = v == pd.SuccessVal
+			}
+			if ok {
+				res.Successes++
+			}
+		}
+	}
+
+	// record total roll calls
+	res.TotalRollCalls = totalRollCalls
 
 	// Apply modifier to the total
 	switch pd.ModFunc {

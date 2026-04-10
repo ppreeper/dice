@@ -21,6 +21,12 @@ Supported notation (subset):
 - Exploding: `!` after sides, e.g. `2d6!`
 - Keep/Drop: `kh`/`kl`/`dh`/`dl` or `k`/`d` shorthand, with a count. Examples: `4d6kh3`, `4d6d1`, `4d6k3`.
 - Percentile: `d%` is accepted as `d100`.
+ - Rerolls: `r` / `ro` with comparators and per-die cap. Examples:
+   - `r1` (reroll faces equal to 1 until they are different)
+   - `ro1` (reroll once if equal to 1)
+   - comparator forms: `r<2`, `r>=5`, `r!=3`
+   - per-die cap: append `#N` to limit rerolls per die, e.g. `r1#2`
+ - Success counting: `>=`, `>`, `<=`, `<`, `=` after the dice term, e.g. `10d10>=8`.
 
 Limits & safety
 ---------------
@@ -49,7 +55,8 @@ res, err := dice.RollParsed(pd, nil) // use default RNG
 Deterministic tests (seed RNG):
 
 ```go
-rng := rand.New(rand.NewSource(600))
+// rand/v2 PCG-based RNG for deterministic results
+rng := rand.New(rand.NewPCG(600, 601))
 pd, _ := dice.Parse("4d6kh3")
 res, _ := dice.RollParsed(pd, rng)
 // res contains deterministic results
@@ -61,6 +68,45 @@ Exploding dice and keep-highest example:
 pd, _ := dice.Parse("4d6!kh3")
 res, _ := dice.RollParsed(pd, nil)
 ```
+
+Rerolls and success counting
+----------------------------
+
+```go
+// reroll ones until not 1
+pd, _ := dice.Parse("4d6r1")
+res, _ := dice.RollParsed(pd, nil)
+
+// reroll once (ro)
+pd2, _ := dice.Parse("4d6ro1")
+res2, _ := dice.RollParsed(pd2, nil)
+
+// success counting: count how many d10 results are >= 8
+pd3, _ := dice.Parse("10d10>=8")
+res3, _ := dice.RollParsed(pd3, nil)
+// res3.Successes contains the number of successes
+```
+
+Grammar & token ordering
+------------------------
+
+After the `dS` portion (and optional `!` for exploding) tokens may appear in any order. Supported trailing tokens are:
+
+- Keep/Drop: `k` or `d` optionally followed by `h`/`l` and a count, e.g. `kh3` or `d2`.
+- Reroll: `r` or `ro` plus comparator and value. Comparator can be `=`, `!=`, `<`, `<=`, `>`, `>=`. Example: `r<2`, `ro!=3`, `r1` (shorthand for `r=1`). Optionally append per-die cap `#N` (e.g. `r1#2`).
+- Success operator: `>=N`, `>N`, `<=N`, `<N`, `=N` (counts successes among kept dice).
+- Arithmetic modifier: `+N`, `-N`, `xN`.
+
+Examples of equivalent orderings:
+
+- `4d6kh3r1` == `4d6r1kh3`
+- `2d6!r<2+1` == `2d6!+1r<2`
+
+Notes
+-----
+- Rerolls are applied to the raw die face before explosions. Exploding is evaluated on the final face after rerolls.
+- All RNG calls (initial, rerolls, explosions) are counted toward MaxTotalRolls. If that limit is exceeded RollParsed returns an error.
+- Parse errors now include the original notation in messages for easier debugging.
 
 Contributing & extending
 -------------------------
