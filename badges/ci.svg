@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="140" height="20">
+  <rect width="85" height="20" fill="#24292e"/>
+  <rect x="85" width="55" height="20" fill="#2ea44f"/>
+  <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">
+    <text x="42" y="14">github</text>
+    <text x="112" y="14">passing</text>
+  </g>
+</svg>
