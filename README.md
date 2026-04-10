@@ -19,6 +19,8 @@ Supported notation (subset):
 - Fate dice: `NF` (e.g. `4F` produces values in -1..1 per die)
 - Modifiers: `+ - x /` (x is multiplication; `*` is accepted and normalized to `x`)
 - Exploding: `!` after sides, e.g. `2d6!`
+ - Exploding: `!` after sides, e.g. `2d6!`
+ - Penetrating explosions: `!p` after sides, e.g. `1d6!p` (each extra exploded roll contributes face-1)
 - Keep/Drop: `kh`/`kl`/`dh`/`dl` or `k`/`d` shorthand, with a count. Examples: `4d6kh3`, `4d6d1`, `4d6k3`.
 - Percentile: `d%` is accepted as `d100`.
  - Rerolls: `r` / `ro` with comparators and per-die cap. Examples:
@@ -67,6 +69,16 @@ Exploding dice and keep-highest example:
 ```go
 pd, _ := dice.Parse("4d6!kh3")
 res, _ := dice.RollParsed(pd, nil)
+```
+
+Penetrating explosion example:
+
+```go
+// deterministic PCG seed used for example reproducibility
+rng := rand.New(rand.NewPCG(600, 727))
+pd, _ := dice.Parse("1d6!p")
+res, _ := dice.RollParsed(pd, rng)
+// With a roll sequence of 6, 6, 3 this produces: 6 + (6-1) + (3-1) = 13
 ```
 
 Rerolls and success counting

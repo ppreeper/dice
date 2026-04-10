@@ -563,6 +563,42 @@ func TestCompoundExplosionChain(t *testing.T) {
 	}
 }
 
+func TestPenetratingExplosionValues(t *testing.T) {
+	// Use a deterministic RNG that yields 6,6,3 sequence for d6
+	rng := rand.New(rand.NewPCG(600, 727))
+
+	// penetrating explosion
+	pr, err := Parse("1d6!p")
+	if err != nil {
+		t.Fatalf("parse err: %v", err)
+	}
+	res, err := RollParsed(pr, rng)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(res.AllRolls) != 1 {
+		t.Fatalf("expected 1 all-roll, got %d", len(res.AllRolls))
+	}
+	// sequence: 6 initial, 6 extra -> +5, 3 extra -> +2 => total = 6 + 5 + 2 = 13
+	if res.AllRolls[0] != 13 {
+		t.Fatalf("penetrating explosion value mismatch: got %d, want %d; rolls=%+v", res.AllRolls[0], 13, res.AllRolls)
+	}
+
+	// non-penetrating explosion with same seed should produce 6 + 6 + 3 = 15
+	rng2 := rand.New(rand.NewPCG(600, 727))
+	pr2, err := Parse("1d6!")
+	if err != nil {
+		t.Fatalf("parse err: %v", err)
+	}
+	res2, err := RollParsed(pr2, rng2)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res2.AllRolls[0] != 15 {
+		t.Fatalf("non-penetrating explosion mismatch: got %d, want %d; rolls=%+v", res2.AllRolls[0], 15, res2.AllRolls)
+	}
+}
+
 func TestLimits(t *testing.T) {
 	// Too many dice
 	large := ParsedDice{Count: MaxDiceCount + 1, Sides: 6, Type: "d"}
