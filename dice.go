@@ -42,6 +42,8 @@ type ParsedDice struct {
 	RerollOnce  bool
 	RerollOp    string // comparator: "=", "<", ">", "<=", ">=", "!="
 	RerollCount int    // max rerolls per die (0 = unlimited)
+	// Penetrating explosion: true when '!p' is used
+	Penetrate bool
 
 	// Success counting: operator and threshold (e.g. ">=8")
 	SuccessOp  string
@@ -149,10 +151,15 @@ func Parse(s string) (ParsedDice, error) {
 
 	pd.Type = "d"
 
-	// optional explode marker '!'
+	// optional explode marker '!' with optional 'p' (penetrating)
 	if pos < len(right) && right[pos] == '!' {
 		pd.Explode = true
 		pos++
+		// optional penetrating 'p' following '!'
+		if pos < len(right) && right[pos] == 'p' {
+			pd.Penetrate = true
+			pos++
+		}
 		// exploding on a die with 1 face is not allowed (would infinite loop)
 		if pd.Sides <= 1 {
 			return pd, fmt.Errorf("cannot explode on sides <= 1")
@@ -437,14 +444,20 @@ func RollParsed(pd ParsedDice, rng *rand.Rand) (RollResult, error) {
 
 			dieTotal := die
 			if pd.Explode {
-				// keep exploding while we hit the maximum face
+				// exploding loop: basic explosion adds the new face; penetrating subtracts 1 from each extra roll
 				for die == pd.Sides {
 					totalRollCalls++
 					if totalRollCalls > MaxTotalRolls {
 						return res, fmt.Errorf("exceeded max roll limit")
 					}
-					die = rng.IntN(pd.Sides) + 1
-					dieTotal += die
+					next := rng.IntN(pd.Sides) + 1
+					if pd.Penetrate {
+						// penetrating: add (next - 1)
+						dieTotal += (next - 1)
+					} else {
+						dieTotal += next
+					}
+					die = next
 				}
 			}
 			res.AllRolls = append(res.AllRolls, dieTotal)
