@@ -111,4 +111,6 @@ Notes
 Contributing & extending
 -------------------------
 
-The parser is intentionally conservative. If you want more features (rerolls, success thresholds, compound exploding, etc.) open an issue or PR — we can extend the parser and the pure roller incrementally.
+The parser is intentionally conservative and we welcome contributions — please open an issue or PR. Implemented extensions include reroll comparator predicates (r/ro with `=`, `!=`, `<`, `<=`, `>`, `>=`), per-die reroll caps using `#N` (e.g. `r1#2`), and success thresholds (`>=`, `>`, `<=`, `<`, `=`).
+
+If you want additional features (compound/penetrating explosions, multi-term expression parsing, advanced reroll predicates, a CLI/HTTP API, or analytic helpers), open an issue or submit a PR — we can extend the parser and the pure roller incrementally.
