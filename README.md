@@ -1,6 +1,6 @@
 # dice
 
-![Build Status](badges/ci.svg)
+![Build Status](https://github.com/ppreeper/dice/actions/workflows/go.yml/badge.svg)
 ![Coverage Status](badges/coverage.svg)
 
 A dice rolling library for use in games. Specifically to be used for games using [dice notation](https://en.wikipedia.org/wiki/Dice_notation).

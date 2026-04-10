@@ -52,27 +52,26 @@ jobs:
           pct_num=${pct%%%}
           color=$(awk -v p="$pct_num" 'BEGIN{if(p>=90)print "#4c1"; else if(p>=75)print "#97CA00"; else if(p>=60)print "#a4a61d"; else if(p>=40)print "#fe7d37"; else print "#e05d44"}')
           mkdir -p badges
-          cat > badges/coverage.svg <<EOF
-<?xml version="1.0"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="120" height="20">
-  <linearGradient id="b" x2="0" y2="100%">
-    <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
-    <stop offset="1" stop-opacity=".1"/>
-  </linearGradient>
-  <mask id="a">
-    <rect width="120" height="20" rx="3" fill="#fff"/>
-  </mask>
-  <g mask="url(#a)">
-    <rect width="70" height="20" fill="#555"/>
-    <rect x="70" width="50" height="20" fill="$color"/>
-    <rect width="120" height="20" fill="url(#b)"/>
-  </g>
-  <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">
-    <text x="35" y="14">coverage</text>
-    <text x="95" y="14">$pct</text>
-  </g>
-</svg>
-EOF
+          printf '%s\n' \
+            '<?xml version="1.0"?>' \
+            '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="20">' \
+            '  <linearGradient id="b" x2="0" y2="100%">' \
+            '    <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>' \
+            '    <stop offset="1" stop-opacity=".1"/>' \
+            '  </linearGradient>' \
+            '  <mask id="a">' \
+            '    <rect width="120" height="20" rx="3" fill="#fff"/>' \
+            '  </mask>' \
+            '  <g mask="url(#a)">' \
+            '    <rect width="70" height="20" fill="#555"/>' \
+            "    <rect x=\"70\" width=\"50\" height=\"20\" fill=\"$color\"/>" \
+            '    <rect width="120" height="20" fill="url(#b)"/>' \
+            '  </g>' \
+            '  <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">' \
+            '    <text x="35" y="14">coverage</text>' \
+            "    <text x=\"95\" y=\"14\">$pct</text>" \
+            '  </g>' \
+            '</svg>' > badges/coverage.svg
 
       - name: Commit badge
         run: |
