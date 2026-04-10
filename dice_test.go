@@ -8,9 +8,6 @@ import (
 // small, deterministic RNG for tests
 var testRNG = rand.New(rand.NewPCG(600, 601))
 
-// fixedRand is provided for deterministic behavior in examples/tests if needed
-fixedRand = rand.New(rand.NewPCG(600, 601))
-
 var parseTests = []struct {
 	in      string
 	want    ParsedDice

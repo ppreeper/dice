@@ -159,132 +159,123 @@ func Parse(s string) (ParsedDice, error) {
 		}
 	}
 
-	// optional keep/drop: k or d, optionally followed by h/l, then count. e.g. kh3, d2, kl1
-	if pos < len(right) && (right[pos] == 'k' || right[pos] == 'd') {
-		pd.KeepDropAction = string(right[pos])
-		pos++
-		// optional h/l
-		if pos < len(right) && (right[pos] == 'h' || right[pos] == 'l') {
-			pd.KeepDropWhich = string(right[pos])
+	// flexible parsing: accept tokens in any order after optional '!'
+	for pos < len(right) {
+		ch := right[pos]
+		switch ch {
+		case 'k', 'd':
+			// keep/drop
+			pd.KeepDropAction = string(ch)
 			pos++
-		} else {
-			// defaults: k -> h, d -> l
-			if pd.KeepDropAction == "k" {
-				pd.KeepDropWhich = "h"
-			} else {
-				pd.KeepDropWhich = "l"
-			}
-		}
-		// parse count
-		if pos >= len(right) || right[pos] < '0' || right[pos] > '9' {
-			return pd, fmt.Errorf("missing keep/drop count")
-		}
-		start := pos
-		for pos < len(right) && right[pos] >= '0' && right[pos] <= '9' {
-			pos++
-		}
-		kv, err := strconv.Atoi(right[start:pos])
-		if err != nil {
-			return pd, fmt.Errorf("invalid keep/drop count: %w", err)
-		}
-		pd.KeepDropCount = kv
-	}
-	// optional reroll: r<op>N or ro<op>N where <op> is one of =, <, >, <=, >=, !=
-	// shorthand rN is equivalent to r=N. Optionally append #M to limit rerolls per-die: r1#2
-	if pos < len(right) && right[pos] == 'r' {
-		pos++
-		once := false
-		if pos < len(right) && right[pos] == 'o' {
-			once = true
-			pos++
-		}
-
-		// parse operator if present, prefer two-char ops
-		rerOp := ""
-		if pos+1 < len(right) {
-			two := right[pos : pos+2]
-			if two == ">=" || two == "<=" || two == "!=" {
-				rerOp = two
-				pos += 2
-			}
-		}
-		if rerOp == "" && pos < len(right) {
-			if right[pos] == '>' || right[pos] == '<' || right[pos] == '=' {
-				rerOp = string(right[pos])
+			if pos < len(right) && (right[pos] == 'h' || right[pos] == 'l') {
+				pd.KeepDropWhich = string(right[pos])
 				pos++
+			} else {
+				if pd.KeepDropAction == "k" {
+					pd.KeepDropWhich = "h"
+				} else {
+					pd.KeepDropWhich = "l"
+				}
 			}
-		}
-
-		// if no operator parsed, default to '=' and expect digits now
-		if rerOp == "" {
-			rerOp = "="
-		}
-
-		if pos >= len(right) || right[pos] < '0' || right[pos] > '9' {
-			return pd, fmt.Errorf("missing reroll value")
-		}
-		start := pos
-		for pos < len(right) && right[pos] >= '0' && right[pos] <= '9' {
-			pos++
-		}
-		rv, err := strconv.Atoi(right[start:pos])
-		if err != nil {
-			return pd, fmt.Errorf("invalid reroll value: %w", err)
-		}
-		pd.RerollVal = rv
-		pd.RerollOnce = once
-		pd.RerollOp = rerOp
-
-		// optional per-die reroll limit: #N
-		if pos < len(right) && right[pos] == '#' {
-			pos++
 			if pos >= len(right) || right[pos] < '0' || right[pos] > '9' {
-				return pd, fmt.Errorf("missing reroll count")
+				return pd, fmt.Errorf("parse error: missing keep/drop count in %q", s)
 			}
 			start := pos
 			for pos < len(right) && right[pos] >= '0' && right[pos] <= '9' {
 				pos++
 			}
-			rc, err := strconv.Atoi(right[start:pos])
+			kv, err := strconv.Atoi(right[start:pos])
 			if err != nil {
-				return pd, fmt.Errorf("invalid reroll count: %w", err)
+				return pd, fmt.Errorf("invalid keep/drop count: %w", err)
 			}
-			if rc < 0 {
-				return pd, fmt.Errorf("invalid reroll count: %d", rc)
+			pd.KeepDropCount = kv
+			continue
+		case 'r':
+			// reroll
+			pos++
+			once := false
+			if pos < len(right) && right[pos] == 'o' {
+				once = true
+				pos++
 			}
-			pd.RerollCount = rc
-		}
-	}
-
-	// optional success operator: one of >=, <=, >, <, = followed by number
-	if pos < len(right) {
-		// check for two-char ops first
-		if pos+1 < len(right) {
-			two := right[pos : pos+2]
-			if two == ">=" || two == "<=" {
-				pos += 2
+			rerOp := ""
+			if pos+1 < len(right) {
+				two := right[pos : pos+2]
+				if two == ">=" || two == "<=" || two == "!=" {
+					rerOp = two
+					pos += 2
+				}
+			}
+			if rerOp == "" && pos < len(right) {
+				if right[pos] == '>' || right[pos] == '<' || right[pos] == '=' {
+					rerOp = string(right[pos])
+					pos++
+				}
+			}
+			if rerOp == "" {
+				rerOp = "="
+			}
+			if pos >= len(right) || right[pos] < '0' || right[pos] > '9' {
+				return pd, fmt.Errorf("parse error: missing reroll value in %q", s)
+			}
+			start := pos
+			for pos < len(right) && right[pos] >= '0' && right[pos] <= '9' {
+				pos++
+			}
+			rv, err := strconv.Atoi(right[start:pos])
+			if err != nil {
+				return pd, fmt.Errorf("invalid reroll value: %w", err)
+			}
+			pd.RerollVal = rv
+			pd.RerollOnce = once
+			pd.RerollOp = rerOp
+			if pos < len(right) && right[pos] == '#' {
+				pos++
 				if pos >= len(right) || right[pos] < '0' || right[pos] > '9' {
-					return pd, fmt.Errorf("missing success value")
+					return pd, fmt.Errorf("parse error: missing reroll count in %q", s)
 				}
 				start := pos
 				for pos < len(right) && right[pos] >= '0' && right[pos] <= '9' {
 					pos++
 				}
-				sv, err := strconv.Atoi(right[start:pos])
+				rc, err := strconv.Atoi(right[start:pos])
 				if err != nil {
-					return pd, fmt.Errorf("invalid success value: %w", err)
+					return pd, fmt.Errorf("invalid reroll count: %w", err)
 				}
-				pd.SuccessOp = two
-				pd.SuccessVal = sv
+				if rc < 0 {
+					return pd, fmt.Errorf("invalid reroll count: %d", rc)
+				}
+				pd.RerollCount = rc
 			}
-		}
-		// if still not consumed, check single-char ops
-		if pd.SuccessOp == "" && pos < len(right) {
-			op := right[pos]
-			if op == '>' || op == '<' || op == '=' {
+			continue
+		case '>', '<', '=', '!':
+			// success operator: two-char first (>=, <=, !=)
+			if pos+1 < len(right) {
+				two := right[pos : pos+2]
+				if two == ">=" || two == "<=" || two == "!=" {
+					pos += 2
+					if pos >= len(right) || right[pos] < '0' || right[pos] > '9' {
+						return pd, fmt.Errorf("parse error: missing success value in %q", s)
+					}
+					start := pos
+					for pos < len(right) && right[pos] >= '0' && right[pos] <= '9' {
+						pos++
+					}
+					sv, err := strconv.Atoi(right[start:pos])
+					if err != nil {
+						return pd, fmt.Errorf("invalid success value: %w", err)
+					}
+					pd.SuccessOp = two
+					pd.SuccessVal = sv
+					continue
+				}
+			}
+			// single-char success op
+			if right[pos] == '>' || right[pos] == '<' || right[pos] == '=' {
+				op := right[pos]
 				pos++
 				if pos >= len(right) || right[pos] < '0' || right[pos] > '9' {
-					return pd, fmt.Errorf("missing success value")
+					return pd, fmt.Errorf("parse error: missing success value in %q", s)
 				}
 				start := pos
 				for pos < len(right) && right[pos] >= '0' && right[pos] <= '9' {
@@ -296,29 +287,30 @@ func Parse(s string) (ParsedDice, error) {
 				}
 				pd.SuccessOp = string(op)
 				pd.SuccessVal = sv
+				continue
 			}
-		}
-	}
-
-	// optional arithmetic modifier
-	if pos < len(right) {
-		op := right[pos]
-		if op == '+' || op == '-' || op == 'x' || op == '*' || op == '/' {
-			pd.ModFunc = string(op)
-			if pd.ModFunc == "*" {
-				pd.ModFunc = "x"
+			return pd, fmt.Errorf("unexpected token %q in %q", string(right[pos]), s)
+		case '+', '-', 'x', '*', '/':
+			// arithmetic modifier -- consumes the rest and returns
+			op := right[pos]
+			if op == '+' || op == '-' || op == 'x' || op == '*' || op == '/' {
+				pd.ModFunc = string(op)
+				if pd.ModFunc == "*" {
+					pd.ModFunc = "x"
+				}
+				pos++
+				if pos >= len(right) {
+					return pd, fmt.Errorf("parse error: missing modifier value in %q", s)
+				}
+				mv, err := strconv.Atoi(right[pos:])
+				if err != nil {
+					return pd, fmt.Errorf("invalid modifier value: %w", err)
+				}
+				pd.ModVal = mv
+				pos = len(right)
+				break
 			}
-			pos++
-			if pos >= len(right) {
-				return pd, fmt.Errorf("missing modifier value")
-			}
-			mv, err := strconv.Atoi(right[pos:])
-			if err != nil {
-				return pd, fmt.Errorf("invalid modifier value: %w", err)
-			}
-			pd.ModVal = mv
-			pos = len(right)
-		} else {
+		default:
 			return pd, fmt.Errorf("unexpected token %q in %q", string(right[pos]), s)
 		}
 	}
