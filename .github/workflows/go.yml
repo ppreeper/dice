@@ -1,0 +1,107 @@
+name: Go
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Allow workflow to push badge back to the repository
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: 1.21
+
+      - name: Check formatting
+        run: |
+          fmtout=$(gofmt -l .)
+          if [ -n "$fmtout" ]; then
+            echo "gofmt -l returned files. Please run 'gofmt -w .' or 'make fmt' to fix."
+            echo "$fmtout"
+            exit 1
+          fi
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test (with coverage and race)
+        run: |
+          go test -race -coverprofile=coverage.out -covermode=atomic -v ./...
+
+      - name: Compute coverage and generate badge
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          pct=$(go tool cover -func=coverage.out | grep "^total:" | awk '{print $NF}')
+          echo "coverage_raw=$pct"
+          pct_num=${pct%%%}
+          color=$(awk -v p="$pct_num" 'BEGIN{if(p>=90)print "#4c1"; else if(p>=75)print "#97CA00"; else if(p>=60)print "#a4a61d"; else if(p>=40)print "#fe7d37"; else print "#e05d44"}')
+          mkdir -p badges
+          cat > badges/coverage.svg <<EOF
+<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="20">
+  <linearGradient id="b" x2="0" y2="100%">
+    <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+    <stop offset="1" stop-opacity=".1"/>
+  </linearGradient>
+  <mask id="a">
+    <rect width="120" height="20" rx="3" fill="#fff"/>
+  </mask>
+  <g mask="url(#a)">
+    <rect width="70" height="20" fill="#555"/>
+    <rect x="70" width="50" height="20" fill="$color"/>
+    <rect width="120" height="20" fill="url(#b)"/>
+  </g>
+  <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">
+    <text x="35" y="14">coverage</text>
+    <text x="95" y="14">$pct</text>
+  </g>
+</svg>
+EOF
+
+      - name: Commit badge
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add badges/coverage.svg
+          git commit -m "chore(ci): update coverage badge" || echo "no changes to commit"
+          git push origin HEAD:main || echo "push failed"
+
+  bench:
+    runs-on: ubuntu-latest
+    needs: build
+    if: ${{ github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: 1.21
+
+      - name: Run benchmarks
+        run: make bench
+
+      - name: Run benchmarks and save profiles
+        run: make bench-mem
+
+      - name: Upload profiles
+        uses: actions/upload-artifact@v3
+        with:
+          name: bench-profiles
+          path: profiles

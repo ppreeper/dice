@@ -1,279 +1,185 @@
 package dice
 
 import (
-	"bytes"
-	"io"
 	"math/rand"
-	"os"
-	"strconv"
 	"testing"
 )
 
-type NullWriter int
+// small, deterministic RNG for tests
+var testRNG = rand.New(rand.NewSource(600))
 
-func (NullWriter) Write([]byte) (int, error) { return 0, nil }
-
-// patternTest structure of the dice pattern tests
-type patternTest struct {
-	a          string
-	dieCount   int
-	dieType    string
-	dieSides   int
-	dieModFunc string
-	dieModVal  int
-}
-
-func dicePatGen() []patternTest {
-	// var dice []string
-	var patTests []patternTest
-	for i := 0; i < 101; i++ {
-		d := strconv.Itoa(i) + "F"
-		// dice = append(dice, d)
-		patTests = append(patTests, patternTest{d, i, "F", 3, "", 0})
-	}
-	for i := 0; i < 101; i++ {
-		d := "d" + strconv.Itoa(i)
-		// dice = append(dice, d)
-		patTests = append(patTests, patternTest{d, 1, "d", i, "", 0})
-	}
-	for i := 0; i < 101; i++ {
-		for j := 0; j < 101; j++ {
-			d := strconv.Itoa(i) + "d" + strconv.Itoa(j)
-			// dice = append(dice, d)
-			patTests = append(patTests, patternTest{d, i, "d", j, "", 0})
-		}
-	}
-	for i := 0; i < 101; i++ {
-		for _, m := range []string{"+", "-", "x", "/"} {
-			for mv := 0; mv < 101; mv++ {
-				d := "d" + strconv.Itoa(i) + m + strconv.Itoa(mv)
-				// dice = append(dice, d)
-				patTests = append(patTests, patternTest{d, 1, "d", i, m, mv})
-			}
-		}
-	}
-	for i := 0; i < 101; i++ {
-		for j := 0; j < 101; j++ {
-			for _, m := range []string{"+", "-", "x", "/"} {
-				for mv := 0; mv < 101; mv++ {
-					d := strconv.Itoa(i) + "d" + strconv.Itoa(j) + m + strconv.Itoa(mv)
-					// dice = append(dice, d)
-					patTests = append(patTests, patternTest{d, i, "d", j, m, mv})
-				}
-			}
-		}
-	}
-	return patTests
-}
-
-// mulPatternTests use values that you know are right
-var mulPatternTests = []struct {
-	a            string
-	dieCount     int
-	dieType      string
-	dieSides     int
-	dieModFunc   string
-	dieModVal    int
-	expectedRoll int
-	expected     []int
-	expectedSum  int
+var parseTests = []struct {
+	in      string
+	want    ParsedDice
+	wantErr bool
 }{
-	{"1d6", 1, "d", 6, "", 0, 6, []int{5}, 6},
-	{"2d6", 2, "d", 6, "", 0, 6, []int{3, 4}, 7},
-	{"10d8", 10, "d", 8, "", 0, 6, []int{2, 5, 4, 5, 7, 8, 1, 6, 5, 2}, 44},
-	{"4F", 4, "F", 3, "", 0, 2, []int{-1, 0, 0, 1}, 0},
-	{"d6", 1, "d", 6, "", 0, 3, []int{1}, 1},
-	{"d20", 1, "d", 20, "", 0, 16, []int{8}, 8},
-	{"d6+2", 1, "d", 6, "+", 2, 5, []int{5}, 7},
-	{"d6-2", 1, "d", 6, "-", 2, 1, []int{4}, 2},
-	{"d6x2", 1, "d", 6, "x", 2, 4, []int{3}, 4},
-	{"d6/2", 1, "d", 6, "/", 2, 1, []int{2}, 1},
-	{"d20+5", 1, "d", 20, "+", 5, 16, []int{9}, 16},
-	{"3d20x5", 3, "d", 20, "x", 5, 3, []int{8, 9, 20}, 250},
-	{"3d20/5", 3, "d", 20, "/", 5, 9, []int{4, 5, 11}, 2},
-	{"3d20+5", 3, "d", 20, "+", 5, 3, []int{15, 18, 17}, 46},
-	{"3d20-5", 3, "d", 20, "-", 5, 11, []int{3, 2, 8}, 30},
+	{"d6", ParsedDice{Count: 1, Sides: 6, Type: "d", ModFunc: "", ModVal: 0}, false},
+	{"1d6", ParsedDice{Count: 1, Sides: 6, Type: "d"}, false},
+	{"2d8+3", ParsedDice{Count: 2, Sides: 8, Type: "d", ModFunc: "+", ModVal: 3}, false},
+	{"4F", ParsedDice{Count: 4, Sides: 3, Type: "F"}, false},
+	{"d%", ParsedDice{Count: 1, Sides: 100, Type: "d"}, false},
+	{"", ParsedDice{}, true},
+	{"xd6", ParsedDice{}, true},
+	{"2d", ParsedDice{}, true},
+	{"2d6/0", ParsedDice{Count: 2, Sides: 6, Type: "d", ModFunc: "/", ModVal: 0}, false},
+	{"4d6kh3", ParsedDice{Count: 4, Sides: 6, Type: "d", KeepDropAction: "k", KeepDropWhich: "h", KeepDropCount: 3}, false},
+	{"4d6!", ParsedDice{Count: 4, Sides: 6, Type: "d", Explode: true}, false},
 }
 
-// TestPattern test
-func TestPattern(t *testing.T) {
-	for _, mt := range mulPatternTests {
-		var d Dice
-		d.Seed = true
-		d.Pattern(mt.a)
-		if d.DieType != mt.dieType {
-			t.Errorf("\nDieType expected %s, got %s", mt.dieType, d.DieType)
+func TestParse(t *testing.T) {
+	for _, tt := range parseTests {
+		pd, err := Parse(tt.in)
+		if (err != nil) != tt.wantErr {
+			t.Fatalf("Parse(%q) err = %v, wantErr %v", tt.in, err, tt.wantErr)
 		}
-		if d.DieCount != mt.dieCount {
-			t.Errorf("\nDieCount expected %d, got %d", mt.dieCount, d.DieCount)
+		if tt.wantErr {
+			continue
 		}
-		if d.DieSides != mt.dieSides {
-			t.Errorf("\nDieSides expected %d, got %d", mt.dieSides, d.DieSides)
-		}
-		if d.DieModFunc != mt.dieModFunc {
-			t.Errorf("\nDieModFunc %s expected %s, got %s", mt.a, mt.dieModFunc, d.DieModFunc)
-		}
-		if d.DieModVal != mt.dieModVal {
-			t.Errorf("\nDieModVal expected %d, got %d", mt.dieModVal, d.DieModVal)
+		if pd.Count != tt.want.Count || pd.Sides != tt.want.Sides || pd.Type != tt.want.Type || pd.ModFunc != tt.want.ModFunc || pd.ModVal != tt.want.ModVal {
+			t.Fatalf("Parse(%q) = %+v, want %+v", tt.in, pd, tt.want)
 		}
 	}
 }
 
-// TestPattern2 test
-func TestPattern2(t *testing.T) {
-	for _, mt := range dicePatGen() {
-		var d Dice
-		d.Seed = true
-		d.Pattern(mt.a)
-		if d.DieType != mt.dieType {
-			t.Errorf("\nDieType expected %s, got %s", mt.dieType, d.DieType)
-		}
-		if d.DieCount != mt.dieCount {
-			t.Errorf("\nDieCount expected %d, got %d", mt.dieCount, d.DieCount)
-		}
-		if d.DieSides != mt.dieSides {
-			t.Errorf("\nDieSides expected %d, got %d", mt.dieSides, d.DieSides)
-		}
-		if d.DieModFunc != mt.dieModFunc {
-			t.Errorf("\nDieModFunc %s expected %s, got %s", mt.a, mt.dieModFunc, d.DieModFunc)
-		}
-		if d.DieModVal != mt.dieModVal {
-			t.Errorf("\nDieModVal expected %d, got %d", mt.dieModVal, d.DieModVal)
-		}
+func TestRollParsedSimple(t *testing.T) {
+	pd := ParsedDice{Count: 1, Sides: 6, Type: "d"}
+	res, err := RollParsed(pd, testRNG)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(res.Rolls) != 1 {
+		t.Fatalf("expected 1 roll, got %d", len(res.Rolls))
+	}
+	if res.Total != res.Rolls[0] {
+		t.Fatalf("expected total %d == roll %d", res.Total, res.Rolls[0])
 	}
 }
 
-func BenchmarkPattern_6F(b *testing.B) {
-	var d Dice
-	for n := 0; n < b.N; n++ {
-		d.Pattern("6F")
+func TestFateDice(t *testing.T) {
+	pd := ParsedDice{Count: 4, Type: "F", Sides: 3}
+	res, err := RollParsed(pd, testRNG)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(res.Rolls) != 4 {
+		t.Fatalf("expected 4 rolls, got %d", len(res.Rolls))
 	}
 }
 
-func BenchmarkPattern_d6(b *testing.B) {
-	var d Dice
-	for n := 0; n < b.N; n++ {
-		d.Pattern("d6")
+func TestModifiers(t *testing.T) {
+	pd := ParsedDice{Count: 2, Sides: 6, Type: "d", ModFunc: "+", ModVal: 3}
+	res, err := RollParsed(pd, testRNG)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// total should be sum(rolls) + 3
+	sum := 0
+	for _, v := range res.Rolls {
+		sum += v
+	}
+	if res.Total != sum+3 {
+		t.Fatalf("expected total %d, got %d", sum+3, res.Total)
 	}
 }
 
-func BenchmarkPattern_1d6(b *testing.B) {
-	var d Dice
-	for n := 0; n < b.N; n++ {
-		d.Pattern("1d6")
+func TestDivisionByZero(t *testing.T) {
+	pd := ParsedDice{Count: 2, Sides: 6, Type: "d", ModFunc: "/", ModVal: 0}
+	_, err := RollParsed(pd, testRNG)
+	if err == nil {
+		t.Fatalf("expected division by zero error")
 	}
 }
 
-func BenchmarkPattern_d6add(b *testing.B) {
-	var d Dice
-	for n := 0; n < b.N; n++ {
-		d.Pattern("d6+1")
+func TestExploding(t *testing.T) {
+	// Using a seeded RNG that will produce a 6 to cause explosion for a d6
+	pr, err := Parse("2d6!")
+	if err != nil {
+		t.Fatalf("parse err: %v", err)
 	}
-}
-func BenchmarkPattern_d6sub(b *testing.B) {
-	var d Dice
-	for n := 0; n < b.N; n++ {
-		d.Pattern("d6-1")
+	res, err := RollParsed(pr, testRNG)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
-}
-func BenchmarkPattern_d6mul(b *testing.B) {
-	var d Dice
-	for n := 0; n < b.N; n++ {
-		d.Pattern("d6x1")
+	if len(res.AllRolls) != 2 {
+		t.Fatalf("expected 2 all-rolls, got %d", len(res.AllRolls))
 	}
-}
-func BenchmarkPattern_d6div(b *testing.B) {
-	var d Dice
-	for n := 0; n < b.N; n++ {
-		d.Pattern("d6/1")
-	}
-}
-func BenchmarkPattern_2d6add(b *testing.B) {
-	var d Dice
-	for n := 0; n < b.N; n++ {
-		d.Pattern("2d6+1")
-	}
-}
-func BenchmarkPattern_2d6sub(b *testing.B) {
-	var d Dice
-	for n := 0; n < b.N; n++ {
-		d.Pattern("2d6-1")
-	}
-}
-func BenchmarkPattern_2d6mul(b *testing.B) {
-	var d Dice
-	for n := 0; n < b.N; n++ {
-		d.Pattern("2d6x1")
-	}
-}
-func BenchmarkPattern_2d6div(b *testing.B) {
-	var d Dice
-	for n := 0; n < b.N; n++ {
-		d.Pattern("2d6/1")
+	if len(res.Rolls) != 2 {
+		t.Fatalf("expected 2 final rolls, got %d", len(res.Rolls))
 	}
 }
 
-// TestRollDie test
-func TestRollDie(t *testing.T) {
-	for _, mt := range mulPatternTests {
-		var d Dice
-		d.Seed = true
-		var r *rand.Rand
-		r = rand.New(randFixed)
-		d.Pattern(mt.a)
-		// v := d.RollDie(r)
-		if v := d.RollDie(r); mt.expectedRoll != v {
-			t.Errorf("\nCount %d, Sides %d, Expected %v, got %v",
-				d.DieCount, d.DieSides, mt.expectedRoll, v)
-		}
+func TestKeepHighest(t *testing.T) {
+	pr, err := Parse("4d6kh3")
+	if err != nil {
+		t.Fatalf("parse err: %v", err)
+	}
+	res, err := RollParsed(pr, testRNG)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(res.AllRolls) != 4 {
+		t.Fatalf("expected 4 all-rolls, got %d", len(res.AllRolls))
+	}
+	if len(res.Rolls) != 3 {
+		t.Fatalf("expected 3 kept rolls, got %d", len(res.Rolls))
 	}
 }
 
-// BenchmarkRollDie testing
-func BenchmarkRollDie(b *testing.B) {
-	cdn := "1d6"
-	var d Dice
-	var r *rand.Rand
-	r = rand.New(randFixed)
-	d.Seed = true
-	d.Pattern(cdn)
-	for n := 0; n < b.N; n++ {
-		d.RollDie(r)
+func TestLimits(t *testing.T) {
+	// Too many dice
+	large := ParsedDice{Count: MaxDiceCount + 1, Sides: 6, Type: "d"}
+	if _, err := RollParsed(large, testRNG); err == nil {
+		t.Fatalf("expected error for too many dice")
+	}
+	// Invalid sides
+	bad := ParsedDice{Count: 1, Sides: 0, Type: "d"}
+	if _, err := RollParsed(bad, testRNG); err == nil {
+		t.Fatalf("expected error for invalid sides")
 	}
 }
 
-// TestRoll test
-func TestRoll(t *testing.T) {
-	for _, mt := range mulPatternTests {
-		var d Dice
-		d.Seed = true
-		d.Roll(mt.a)
-		if len(d.Results) == len(mt.expected) {
-			if d.Total != mt.expectedSum {
-				t.Errorf("results %v\t%v\tsum not equal %d  %d\n", d.Results, mt.expected, d.Total, mt.expectedSum)
-			}
-		}
+func BenchmarkParse(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, _ = Parse("3d6+2")
 	}
 }
 
-// BenchmarkRoll testing
-func BenchmarkRoll(b *testing.B) {
-	cdn := "1d6"
-	var d Dice
-	d.Seed = true
-	for n := 0; n < b.N; n++ {
-		d.Roll(cdn)
+func BenchmarkRollParsed(b *testing.B) {
+	pd := ParsedDice{Count: 10, Sides: 8, Type: "d"}
+	for i := 0; i < b.N; i++ {
+		_, _ = RollParsed(pd, testRNG)
 	}
 }
 
-func captureStdout(f func()) string {
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-	f()
-	w.Close()
-	os.Stdout = old
-	var buf bytes.Buffer
-	io.Copy(&buf, r)
-	return buf.String()
+func BenchmarkParseExplode(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, _ = Parse("2d6!")
+	}
+}
+
+func BenchmarkRollExplode(b *testing.B) {
+	pd, _ := Parse("2d6!")
+	rng := rand.New(rand.NewSource(600))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = RollParsed(pd, rng)
+	}
+}
+
+func BenchmarkRollKeepDrop(b *testing.B) {
+	pd, _ := Parse("4d6kh3")
+	rng := rand.New(rand.NewSource(600))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = RollParsed(pd, rng)
+	}
+}
+
+func BenchmarkRollManyDice(b *testing.B) {
+	pd, _ := Parse("100d6")
+	rng := rand.New(rand.NewSource(600))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = RollParsed(pd, rng)
+	}
 }
